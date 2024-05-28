@@ -1,0 +1,15 @@
+[package]
+name = "iced_wgpu_shader"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+bytemuck = { version = "1.16.0", features = ["derive"] }
+glam = {version = "0.27.0", features=[ "bytemuck" ]}
+parking_lot = "0.12.3"
+
+[dependencies.iced]
+git = "https://github.com/B0ney/iced"
+brnch = "dylib_reloaded"
+default-features = false
+features = ["wgpu"]
