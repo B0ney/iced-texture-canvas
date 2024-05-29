@@ -18,7 +18,12 @@ struct VertexOut {
 
 @vertex
 fn vs_main(in: VertexIn) -> VertexOut {
+	let position = vec2f(0.0,0.0);
+    var out: VertexOut;
+    out.position = position;
+    out.tex_coords = vec2f(0.0, 0.0);
 
+	return out;
 }
 
 // Fragment shader
