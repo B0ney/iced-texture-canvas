@@ -3,8 +3,6 @@ use std::{fmt::Debug, sync::Arc};
 
 use iced::widget::shader::wgpu;
 
-use super::uniforms::Uniforms;
-
 pub struct Texture {
     pub texture: wgpu::Texture,
     pub view: wgpu::TextureView,
@@ -30,7 +28,7 @@ impl Texture {
             mip_level_count: 1,
             sample_count: 1,
             dimension: wgpu::TextureDimension::D2,
-            format: wgpu::TextureFormat::Rgba8UnormSrgb, // srgb or no srgb
+            format: wgpu::TextureFormat::Rgba8Unorm, // srgb or no srgb
             usage: wgpu::TextureUsages::TEXTURE_BINDING
                 | wgpu::TextureUsages::COPY_DST
                 | wgpu::TextureUsages::COPY_SRC,
@@ -161,7 +159,7 @@ impl Debug for Pixmap {
 impl Pixmap {
     /// creates and preallocates an empty pixmap
     pub(crate) fn new(width: u32, height: u32) -> Self {
-        let buffer = vec![0; width as usize * height as usize].into_boxed_slice();
+        let buffer = vec![0xff << 8; width as usize * height as usize].into_boxed_slice();
 
         Self {
             buffer: Arc::new(RwLock::new(buffer)),

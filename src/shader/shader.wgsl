@@ -19,20 +19,16 @@ struct VertexIn {
 
 struct VertexOut {
 	@builtin(position) position: vec4<f32>,
-    // @location(0) tex_coords: vec2<f32>,
 }
 
 @vertex
 fn vs_main(in: VertexIn) -> VertexOut {
-	let position = vec2f(0.0,0.0);
-    var out: VertexOut;
-    out.position = vec4f(0,0,0,1);
-    // out.tex_coords = vec2f(0.0, 0.0);
-
-	return out;
+	let uv = vec2f(vec2u((in.vertex_index << 1) & 2, in.vertex_index & 2));
+	let position = vec4f(uv * 2. - 1., 0., 1.);
+	return VertexOut(position);
 }
 
 @fragment
 fn fs_main(in: VertexOut) -> @location(0) vec4<f32> {
-    return textureSample(t_diffuse, s_diffuse, vec2f(0.0,0.0));
+    return textureSample(t_diffuse, s_diffuse, in.position.xy);
 }

@@ -1,7 +1,7 @@
 use std::sync::Arc;
 
 use glam::Vec2;
-use iced::widget::shader::wgpu::{self, util::DeviceExt as _};
+use iced::widget::shader::wgpu;
 
 pub struct Uniform {
     pub buffer: wgpu::Buffer,
@@ -11,10 +11,11 @@ pub struct Uniform {
 
 impl Uniform {
     pub fn new(device: &wgpu::Device) -> Self {
-        let buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
+        let buffer = device.create_buffer(&wgpu::BufferDescriptor {
             label: Some("controls uniform"),
-            contents: bytemuck::cast_slice(&[Uniforms::default()]),
             usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
+            size: std::mem::size_of::<Uniforms>() as u64,
+            mapped_at_creation: false,
         });
 
         let bind_group_layout = device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
@@ -61,25 +62,3 @@ pub struct Uniforms {
     pub scale: f32,
 }
 
-impl Uniforms {
-    pub fn layout() -> wgpu::VertexBufferLayout<'static> {
-        use std::mem;
-
-        wgpu::VertexBufferLayout {
-            array_stride: mem::size_of::<Uniforms>() as wgpu::BufferAddress,
-            step_mode: wgpu::VertexStepMode::Vertex,
-            attributes: &[
-                wgpu::VertexAttribute {
-                    offset: 0,
-                    shader_location: 0,
-                    format: wgpu::VertexFormat::Float32x2,
-                },
-                wgpu::VertexAttribute {
-                    offset: mem::size_of::<Vec2>() as wgpu::BufferAddress,
-                    shader_location: 1,
-                    format: wgpu::VertexFormat::Float32,
-                },
-            ],
-        }
-    }
-}
