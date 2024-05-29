@@ -1,7 +1,7 @@
 use std::sync::Arc;
 
 use glam::Vec2;
-use iced::widget::shader::wgpu;
+use iced::widget::shader::wgpu::{self, util::DeviceExt as _};
 
 pub struct Uniform {
     pub buffer: wgpu::Buffer,
@@ -11,11 +11,10 @@ pub struct Uniform {
 
 impl Uniform {
     pub fn new(device: &wgpu::Device) -> Self {
-        let buffer = device.create_buffer(&wgpu::BufferDescriptor {
+        let buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
             label: Some("controls uniform"),
-            size: std::mem::size_of::<Uniforms>() as u64,
+            contents: bytemuck::cast_slice(&[Uniforms::default()]),
             usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
-            mapped_at_creation: false,
         });
 
         let bind_group_layout = device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
@@ -55,7 +54,7 @@ impl Uniform {
 }
 
 /// camera uniforms
-#[derive(Copy, Clone, Debug, bytemuck::Pod, bytemuck::Zeroable)]
+#[derive(Copy, Clone, Debug, bytemuck::Pod, bytemuck::Zeroable, Default)]
 #[repr(C)]
 pub struct Uniforms {
     pub center: Vec2,

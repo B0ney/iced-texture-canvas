@@ -1,7 +1,9 @@
 use iced::widget::shader::wgpu;
 
-use super::{texture, uniforms::{self, Uniform, Uniforms}};
-
+use super::{
+    texture,
+    uniforms::{self, Uniform, Uniforms},
+};
 
 pub struct Pipeline {
     pipeline: wgpu::RenderPipeline,
@@ -19,13 +21,13 @@ impl Pipeline {
             label: Some("Pipeline shader"),
             ..wgpu::include_wgsl!("shader.wgsl")
         });
-        
+
         let texture = texture::Texture::new(device, pixmap.size(), None);
         let uniform = Uniform::new(device);
 
         let pipeline_layout = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
             label: Some("Render Pipeline layout"),
-            bind_group_layouts: &[&uniform.layout, &texture.layout],
+            bind_group_layouts: &[&texture.layout, &uniform.layout], // order matters
             push_constant_ranges: &[],
         });
 
@@ -35,7 +37,7 @@ impl Pipeline {
             vertex: wgpu::VertexState {
                 module: &shader,
                 entry_point: "vs_main",
-                buffers: &[Uniforms::layout()], // texture buffer
+                buffers: &[],
             },
             fragment: Some(wgpu::FragmentState {
                 module: &shader,
@@ -54,7 +56,6 @@ impl Pipeline {
             multisample: wgpu::MultisampleState::default(),
             multiview: None,
         });
-
 
         Self {
             pipeline,
@@ -93,7 +94,6 @@ impl Pipeline {
         pass.set_pipeline(&self.pipeline);
         pass.set_bind_group(1, &self.uniform.bind_group, &[]);
         pass.set_bind_group(0, &self.texture.bind_group, &[]);
-        
         pass.set_viewport(
             viewport.x as f32,
             viewport.y as f32,

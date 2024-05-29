@@ -14,8 +14,7 @@ var t_diffuse: texture_2d<f32>;
 var s_diffuse: sampler;
 
 struct VertexIn {
-	@location(0) position: vec2<f32>,
-    @location(1) scale: f32
+	@builtin(vertex_index) vertex_index: u32,
 }
 
 struct VertexOut {
