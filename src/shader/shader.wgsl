@@ -1,7 +1,6 @@
 
 struct Uniforms {
     @location(0) center: vec2<f32>,
-    @location(1) scale: f32
 }
 
 @group(1) @binding(0) 
@@ -30,5 +29,5 @@ fn vs_main(in: VertexIn) -> VertexOut {
 
 @fragment
 fn fs_main(in: VertexOut) -> @location(0) vec4<f32> {
-    return textureSample(t_diffuse, s_diffuse, in.position.xy);
+    return textureSample(t_diffuse, s_diffuse, uniforms.center);
 }

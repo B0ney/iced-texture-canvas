@@ -88,7 +88,7 @@ impl shader::Primitive for BitmapPrimatrive {
             texture,
             Uniforms {
                 center: self.controls.center,
-                scale: self.controls.scale(),
+                // scale: self.controls.scale(),
             },
         );
     }

@@ -22,7 +22,7 @@ impl Uniform {
             label: Some("Uniform Bind Group"),
             entries: &[wgpu::BindGroupLayoutEntry {
                 binding: 0,
-                visibility: wgpu::ShaderStages::VERTEX,
+                visibility: wgpu::ShaderStages::VERTEX_FRAGMENT,
                 ty: wgpu::BindingType::Buffer {
                     ty: wgpu::BufferBindingType::Uniform,
                     has_dynamic_offset: false,
@@ -59,6 +59,6 @@ impl Uniform {
 #[repr(C)]
 pub struct Uniforms {
     pub center: Vec2,
-    pub scale: f32,
+    // pub scale: f32,
 }
 

@@ -92,8 +92,6 @@ impl Pipeline {
         });
 
         pass.set_pipeline(&self.pipeline);
-        pass.set_bind_group(1, &self.uniform.bind_group, &[]);
-        pass.set_bind_group(0, &self.texture.bind_group, &[]);
         pass.set_viewport(
             viewport.x as f32,
             viewport.y as f32,
@@ -102,6 +100,9 @@ impl Pipeline {
             0.0,
             1.0,
         );
+
+        pass.set_bind_group(0, &self.texture.bind_group, &[]);
+        pass.set_bind_group(1, &self.uniform.bind_group, &[]);
 
         pass.draw(0..3, 0..1)
     }
