@@ -8,19 +8,20 @@ struct Uniforms {
 var<uniform> uniforms: Uniforms;
 
 struct VertexIn {
-	@builtin(vertex_index) vertex_index: u32,
+	@location(0) position: vec2f,
+    @location(1) scale: f32
 }
 
 struct VertexOut {
-	@builtin(position) position: vec2f,
-    @location(0) tex_coords: vec2<f32>,
+	@builtin(position) position: vec4<f32>,
+    @location(0) tex_coords: vec2f,
 }
 
 @vertex
 fn vs_main(in: VertexIn) -> VertexOut {
 	let position = vec2f(0.0,0.0);
     var out: VertexOut;
-    out.position = position;
+    out.position = vec4f(0,0,0,1);
     out.tex_coords = vec2f(0.0, 0.0);
 
 	return out;

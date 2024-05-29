@@ -865,7 +865,7 @@ checksum = "dfa686283ad6dd069f105e5ab091b04c62850d3e4cf5d67debad1933f55023df"
 [[package]]
 name = "iced"
 version = "0.13.0-dev"
-source = "git+https://github.com/B0ney/iced#12f4b875cfb0eeb0bac5416921c6cec40edd420c"
+source = "git+https://github.com/B0ney/iced?branch=dylib_reloaded#732afd740f165390feb88f36e4074a9261f2c5da"
 dependencies = [
  "iced_core",
  "iced_futures",
@@ -878,7 +878,7 @@ dependencies = [
 [[package]]
 name = "iced_core"
 version = "0.13.0-dev"
-source = "git+https://github.com/B0ney/iced#12f4b875cfb0eeb0bac5416921c6cec40edd420c"
+source = "git+https://github.com/B0ney/iced?branch=dylib_reloaded#732afd740f165390feb88f36e4074a9261f2c5da"
 dependencies = [
  "bitflags 2.5.0",
  "bytes",
@@ -897,7 +897,7 @@ dependencies = [
 [[package]]
 name = "iced_futures"
 version = "0.13.0-dev"
-source = "git+https://github.com/B0ney/iced#12f4b875cfb0eeb0bac5416921c6cec40edd420c"
+source = "git+https://github.com/B0ney/iced?branch=dylib_reloaded#732afd740f165390feb88f36e4074a9261f2c5da"
 dependencies = [
  "futures",
  "iced_core",
@@ -910,7 +910,7 @@ dependencies = [
 [[package]]
 name = "iced_graphics"
 version = "0.13.0-dev"
-source = "git+https://github.com/B0ney/iced#12f4b875cfb0eeb0bac5416921c6cec40edd420c"
+source = "git+https://github.com/B0ney/iced?branch=dylib_reloaded#732afd740f165390feb88f36e4074a9261f2c5da"
 dependencies = [
  "bitflags 2.5.0",
  "bytemuck",
@@ -929,7 +929,7 @@ dependencies = [
 [[package]]
 name = "iced_renderer"
 version = "0.13.0-dev"
-source = "git+https://github.com/B0ney/iced#12f4b875cfb0eeb0bac5416921c6cec40edd420c"
+source = "git+https://github.com/B0ney/iced?branch=dylib_reloaded#732afd740f165390feb88f36e4074a9261f2c5da"
 dependencies = [
  "iced_graphics",
  "iced_wgpu",
@@ -940,7 +940,7 @@ dependencies = [
 [[package]]
 name = "iced_runtime"
 version = "0.13.0-dev"
-source = "git+https://github.com/B0ney/iced#12f4b875cfb0eeb0bac5416921c6cec40edd420c"
+source = "git+https://github.com/B0ney/iced?branch=dylib_reloaded#732afd740f165390feb88f36e4074a9261f2c5da"
 dependencies = [
  "bytes",
  "iced_core",
@@ -952,7 +952,7 @@ dependencies = [
 [[package]]
 name = "iced_wgpu"
 version = "0.13.0-dev"
-source = "git+https://github.com/B0ney/iced#12f4b875cfb0eeb0bac5416921c6cec40edd420c"
+source = "git+https://github.com/B0ney/iced?branch=dylib_reloaded#732afd740f165390feb88f36e4074a9261f2c5da"
 dependencies = [
  "bitflags 2.5.0",
  "bytemuck",
@@ -981,7 +981,7 @@ dependencies = [
 [[package]]
 name = "iced_widget"
 version = "0.13.0-dev"
-source = "git+https://github.com/B0ney/iced#12f4b875cfb0eeb0bac5416921c6cec40edd420c"
+source = "git+https://github.com/B0ney/iced?branch=dylib_reloaded#732afd740f165390feb88f36e4074a9261f2c5da"
 dependencies = [
  "iced_renderer",
  "iced_runtime",
@@ -994,7 +994,7 @@ dependencies = [
 [[package]]
 name = "iced_winit"
 version = "0.13.0-dev"
-source = "git+https://github.com/B0ney/iced#12f4b875cfb0eeb0bac5416921c6cec40edd420c"
+source = "git+https://github.com/B0ney/iced?branch=dylib_reloaded#732afd740f165390feb88f36e4074a9261f2c5da"
 dependencies = [
  "iced_futures",
  "iced_graphics",

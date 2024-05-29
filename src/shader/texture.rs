@@ -8,6 +8,7 @@ pub struct Texture {
     pub view: wgpu::TextureView,
     pub sampler: wgpu::Sampler,
     pub size: wgpu::Extent3d,
+    // bindgroup,  layout
 }
 
 impl Texture {
@@ -25,7 +26,7 @@ impl Texture {
             sample_count: 1,
             dimension: wgpu::TextureDimension::D2,
             format: wgpu::TextureFormat::Rgba8UnormSrgb, // srgb or no srgb
-            usage: wgpu::TextureUsages::TEXTURE_BINDING | wgpu::TextureUsages::COPY_DST,
+            usage: wgpu::TextureUsages::TEXTURE_BINDING | wgpu::TextureUsages::COPY_DST | wgpu::TextureUsages::COPY_SRC,
             view_formats: &[],
         });
 

@@ -10,6 +10,6 @@ parking_lot = "0.12.3"
 
 [dependencies.iced]
 git = "https://github.com/B0ney/iced"
-brnch = "dylib_reloaded"
+branch = "dylib_reloaded"
 default-features = false
 features = ["wgpu"]
