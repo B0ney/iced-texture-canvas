@@ -54,8 +54,6 @@ impl Uniform {
     }
 }
 
-pub struct Camera {}
-
 /// camera uniforms
 #[derive(Copy, Clone, Debug, bytemuck::Pod, bytemuck::Zeroable)]
 #[repr(C)]
@@ -65,7 +63,7 @@ pub struct Uniforms {
 }
 
 impl Uniforms {
-    fn layout() -> wgpu::VertexBufferLayout<'static> {
+    pub fn layout() -> wgpu::VertexBufferLayout<'static> {
         use std::mem;
 
         wgpu::VertexBufferLayout {

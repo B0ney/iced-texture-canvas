@@ -2,7 +2,7 @@ use iced::widget::shader::wgpu;
 
 use super::{texture, uniforms::{self, Uniform, Uniforms}};
 
-/// Idea - what if the pipeline gives us a handle to upload textures?
+
 pub struct Pipeline {
     pipeline: wgpu::RenderPipeline,
     uniform: uniforms::Uniform,
@@ -15,14 +15,17 @@ impl Pipeline {
         format: wgpu::TextureFormat,
         pixmap: &texture::Pixmap,
     ) -> Self {
-        let shader = device.create_shader_module(wgpu::include_wgsl!("shader.wgsl"));
+        let shader = device.create_shader_module(wgpu::ShaderModuleDescriptor {
+            label: Some("Pipeline shader"),
+            ..wgpu::include_wgsl!("shader.wgsl")
+        });
         
         let texture = texture::Texture::new(device, pixmap.size(), None);
         let uniform = Uniform::new(device);
 
         let pipeline_layout = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
-            label: None,
-            bind_group_layouts: &[&texture.layout,],
+            label: Some("Render Pipeline layout"),
+            bind_group_layouts: &[&uniform.layout, &texture.layout],
             push_constant_ranges: &[],
         });
 
@@ -32,24 +35,23 @@ impl Pipeline {
             vertex: wgpu::VertexState {
                 module: &shader,
                 entry_point: "vs_main",
-                buffers: &[], // texture buffer
+                buffers: &[Uniforms::layout()], // texture buffer
             },
             fragment: Some(wgpu::FragmentState {
                 module: &shader,
                 entry_point: "fs_main",
                 targets: &[Some(wgpu::ColorTargetState {
                     format,
-                    blend: None,
+                    blend: Some(wgpu::BlendState {
+                        color: wgpu::BlendComponent::REPLACE,
+                        alpha: wgpu::BlendComponent::REPLACE,
+                    }),
                     write_mask: wgpu::ColorWrites::ALL,
                 })],
             }),
             primitive: wgpu::PrimitiveState::default(),
             depth_stencil: None,
-            multisample: wgpu::MultisampleState {
-                count: 1,
-                mask: !0,
-                alpha_to_coverage_enabled: false,
-            },
+            multisample: wgpu::MultisampleState::default(),
             multiview: None,
         });
 
@@ -61,8 +63,8 @@ impl Pipeline {
         }
     }
 
+    /// TODO: apply uniform buffer to transform, clip texture view.
     pub fn update(&mut self, queue: &wgpu::Queue, pixmap: &texture::Pixmap, uniforms: Uniforms) {
-        // apply uniform buffer to transform, clip texture view.
         self.uniform.upload(queue, uniforms);
         self.texture.upload(queue, pixmap);
     }
@@ -89,9 +91,9 @@ impl Pipeline {
         });
 
         pass.set_pipeline(&self.pipeline);
-        pass.set_bind_group(0, &self.texture.bind_group, &[]);
         pass.set_bind_group(1, &self.uniform.bind_group, &[]);
-
+        pass.set_bind_group(0, &self.texture.bind_group, &[]);
+        
         pass.set_viewport(
             viewport.x as f32,
             viewport.y as f32,

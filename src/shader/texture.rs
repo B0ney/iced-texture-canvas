@@ -3,6 +3,8 @@ use std::{fmt::Debug, sync::Arc};
 
 use iced::widget::shader::wgpu;
 
+use super::uniforms::Uniforms;
+
 pub struct Texture {
     pub texture: wgpu::Texture,
     pub view: wgpu::TextureView,
@@ -15,11 +17,13 @@ pub struct Texture {
 impl Texture {
     pub fn new(device: &wgpu::Device, size: (u32, u32), label: Option<&str>) -> Self {
         let (width, height) = size;
+
         let size = wgpu::Extent3d {
             width,
             height,
             depth_or_array_layers: 1,
         };
+
         let texture = device.create_texture(&wgpu::TextureDescriptor {
             label: Some("Texture"),
             size,
@@ -33,7 +37,7 @@ impl Texture {
             view_formats: &[],
         });
 
-        let view = texture.create_view(&Default::default());
+        let texture_view = texture.create_view(&Default::default());
 
         let sampler = device.create_sampler(&wgpu::SamplerDescriptor {
             label,
@@ -47,8 +51,6 @@ impl Texture {
             ..Default::default()
         });
 
-
-
         let bind_group_layout = device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
             label: Some("texture_bind_group_layout"),
             entries: &[
@@ -56,19 +58,15 @@ impl Texture {
                     binding: 0,
                     visibility: wgpu::ShaderStages::FRAGMENT,
                     ty: wgpu::BindingType::Texture {
-                        multisampled: false,
+                        sample_type: wgpu::TextureSampleType::Float { filterable: true },
                         view_dimension: wgpu::TextureViewDimension::D2,
-                        sample_type: wgpu::TextureSampleType::Float { filterable: false }, // todo
+                        multisampled: false,
                     },
                     count: None,
                 },
-                // todo
                 wgpu::BindGroupLayoutEntry {
                     binding: 1,
                     visibility: wgpu::ShaderStages::FRAGMENT,
-
-                    // this should match the filterable field of the
-                    // corresponding texture entry above.
                     ty: wgpu::BindingType::Sampler(wgpu::SamplerBindingType::Filtering),
                     count: None,
                 },
@@ -81,7 +79,7 @@ impl Texture {
             entries: &[
                 wgpu::BindGroupEntry {
                     binding: 0,
-                    resource: wgpu::BindingResource::TextureView(&view),
+                    resource: wgpu::BindingResource::TextureView(&texture_view),
                 },
                 wgpu::BindGroupEntry {
                     binding: 1,
@@ -92,11 +90,11 @@ impl Texture {
 
         Self {
             texture,
-            view,
+            view: texture_view,
             sampler,
             size,
             bind_group,
-            layout: Arc::new(bind_group_layout)
+            layout: Arc::new(bind_group_layout),
         }
     }
 
