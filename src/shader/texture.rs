@@ -1,5 +1,5 @@
 use parking_lot::RwLock;
-use std::sync::Arc;
+use std::{fmt::Debug, sync::Arc};
 
 use iced::widget::shader::wgpu;
 
@@ -11,7 +11,7 @@ pub struct Texture {
 }
 
 impl Texture {
-    pub fn rgba(device: wgpu::Device, size: (u32, u32), label: Option<&str>) -> Self {
+    pub fn new(device: &wgpu::Device, size: (u32, u32), label: Option<&str>) -> Self {
         let (width, height) = size;
         let size = wgpu::Extent3d {
             width,
@@ -50,33 +50,33 @@ impl Texture {
         }
     }
 
-    pub fn update(&self, queue: &wgpu::Queue, rgba: &[u8]) {
-        // upload texture to gpu
-        queue.write_texture(
-            wgpu::ImageCopyTextureBase {
-                texture: &self.texture,
-                mip_level: 0,
-                origin: wgpu::Origin3d::ZERO,
-                aspect: wgpu::TextureAspect::All,
-            },
-            rgba,
-            wgpu::ImageDataLayout {
-                offset: 0,
-                bytes_per_row: Some(4 * self.size.width),
-                rows_per_image: Some(self.size.height),
-            },
-            self.size,
-        )
-    }
+    // pub fn update(&self, queue: &wgpu::Queue, rgba: &[u8]) {
+    //     // upload texture to gpu
+    //     queue.write_texture(
+    //         wgpu::ImageCopyTextureBase {
+    //             texture: &self.texture,
+    //             mip_level: 0,
+    //             origin: wgpu::Origin3d::ZERO,
+    //             aspect: wgpu::TextureAspect::All,
+    //         },
+    //         rgba,
+    //         wgpu::ImageDataLayout {
+    //             offset: 0,
+    //             bytes_per_row: Some(4 * self.size.width),
+    //             rows_per_image: Some(self.size.height),
+    //         },
+    //         self.size,
+    //     )
+    // }
 }
 
-struct PixmapRef<'a> {
+pub struct PixmapRef<'a> {
     pub buffer: &'a [u32],
     pub width: u32,
     pub height: u32,
 }
 
-struct PixmapMut<'a> {
+pub struct PixmapMut<'a> {
     pub buffer: &'a mut [u32],
     pub width: u32,
     pub height: u32,
@@ -90,9 +90,19 @@ pub struct Pixmap {
     height: u32,
 }
 
+impl Debug for Pixmap {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("Pixmap")
+            .field("buffer", &"...")
+            .field("width", &self.width)
+            .field("height", &self.height)
+            .finish()
+    }
+}
+
 impl Pixmap {
     /// creates and preallocates an empty pixmap
-    pub fn new(width: u32, height: u32) -> Self {
+    pub(crate) fn new(width: u32, height: u32) -> Self {
         let buffer = vec![0; width as usize * height as usize].into_boxed_slice();
 
         Self {
@@ -115,12 +125,24 @@ impl Pixmap {
 
     pub fn read<T, F>(&self, get: F) -> T
     where
-        F: Fn(PixmapRef<'_>) -> T,
+        F: FnOnce(PixmapRef<'_>) -> T,
     {
         get(PixmapRef {
             buffer: self.buffer.read().as_ref(),
             width: self.width,
             height: self.height,
         })
+    }
+
+    pub fn width(&self) -> u32 {
+        self.width
+    }
+
+    pub fn height(&self) -> u32 {
+        self.height
+    }
+
+    pub fn size(&self) -> (u32, u32) {
+        (self.width, self.height)
     }
 }
