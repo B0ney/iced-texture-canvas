@@ -28,7 +28,7 @@ impl Pipeline {
 
         let pipeline_layout = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
             label: Some("Render Pipeline layout"),
-            bind_group_layouts: &[&texture.layout, &uniform.layout], // order matters
+            bind_group_layouts: &[&texture.bind_group_layout, &uniform.bind_group_layout], // order matters
             push_constant_ranges: &[],
         });
 

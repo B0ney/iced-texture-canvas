@@ -1,12 +1,10 @@
-use std::sync::Arc;
-
 use glam::Vec2;
 use iced::widget::shader::wgpu;
 
 pub struct Uniform {
     pub buffer: wgpu::Buffer,
     pub bind_group: wgpu::BindGroup,
-    pub layout: Arc<wgpu::BindGroupLayout>,
+    pub bind_group_layout: wgpu::BindGroupLayout,
 }
 
 impl Uniform {
@@ -44,7 +42,7 @@ impl Uniform {
         Self {
             buffer,
             bind_group,
-            layout: Arc::new(bind_group_layout),
+            bind_group_layout,
         }
     }
 
@@ -54,7 +52,7 @@ impl Uniform {
     }
 }
 
-/// camera uniforms
+/// camera uniforms, watch out for alignment
 #[derive(Copy, Clone, Debug, bytemuck::Pod, bytemuck::Zeroable, Default)]
 #[repr(C)]
 pub struct Uniforms {
