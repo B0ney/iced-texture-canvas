@@ -58,6 +58,5 @@ impl Uniform {
 pub struct Uniforms {
     pub center: Vec2,
     pub scale: f32,
-    pub padding: f32,
+    pub _padding: f32,
 }
-

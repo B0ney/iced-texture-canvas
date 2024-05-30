@@ -96,7 +96,7 @@ impl shader::Primitive for BitmapPrimatrive {
             Uniforms {
                 center: self.controls.center,
                 scale: self.controls.zoom,
-                padding: 0.0,
+                _padding: Default::default(),
             },
         );
     }
