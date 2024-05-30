@@ -14,6 +14,7 @@ enum Message {
     B(f32),
     X(f32),
     Y(f32),
+    Scale(f32),
 }
 
 struct ShaderApp {
@@ -46,6 +47,7 @@ impl ShaderApp {
             Message::B(b) => self.color.b = b,
             Message::X(x) => self.program.controls.center.x = x,
             Message::Y(y) => self.program.controls.center.y = y,
+            Message::Scale(scale) => self.program.controls.zoom = scale,
         }
 
         if old != self.color {
@@ -81,7 +83,7 @@ impl ShaderApp {
             horizontal_rule(1.0),
             slider(-100.0..=100.0, self.program.controls.center.x, Message::X),
             slider(-100.0..=100.0, self.program.controls.center.y, Message::Y),
-
+            slider(0.0..=1.0, self.program.controls.zoom, Message::Scale).step(0.001),
         ]
         .into()
     }

@@ -1,6 +1,6 @@
+pub mod pipeline;
 mod texture;
 pub mod uniforms;
-pub mod pipeline;
 
 use glam::Vec2;
 use iced::widget::shader::{self, wgpu};
@@ -52,10 +52,19 @@ impl BitmapPrimatrive {
     }
 }
 
-#[derive(Debug, Default, Clone, Copy)]
+#[derive(Debug, Clone, Copy)]
 pub struct Controls {
     pub zoom: f32,
     pub center: Vec2,
+}
+
+impl Default for Controls {
+    fn default() -> Self {
+        Self {
+            zoom: 1.0,
+            center: Default::default(),
+        }
+    }
 }
 
 impl Controls {
@@ -86,6 +95,8 @@ impl shader::Primitive for BitmapPrimatrive {
             &self.pixmap,
             Uniforms {
                 center: self.controls.center,
+                scale: self.controls.zoom,
+                padding: 0.0,
             },
         );
     }

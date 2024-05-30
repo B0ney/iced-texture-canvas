@@ -1,6 +1,7 @@
 
 struct Uniforms {
     @location(0) center: vec2<f32>,
+    @location(1) scale: f32,
 }
 
 @group(1) @binding(0) 
@@ -26,7 +27,7 @@ struct VertexOut {
 fn vs_main(in: VertexIn) -> VertexOut {
 	var out: VertexOut;
     out.tex_coord = in.tex_coord;
-    out.position = vec4<f32>(uniforms.center, 0.0, 1.0) + vec4<f32>(in.position, 0.0, 1.0);
+    out.position = vec4<f32>(uniforms.center / (1.0 / uniforms.scale), 0.0, 1.0) + vec4<f32>(in.position, 0.0, 1.0) * uniforms.scale;
 	return out;
 }
 
