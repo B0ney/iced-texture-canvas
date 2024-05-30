@@ -24,8 +24,13 @@ struct ShaderApp {
 
 impl Default for ShaderApp {
     fn default() -> Self {
+        let bitmap = shader::Bitmap::new(Size::new(256, 192));
+        bitmap.buffer.write(|pixmap| {
+            bytemuck::cast_slice_mut(pixmap.buffer).clone_from_slice(include_bytes!("out.rgba").as_slice());
+        });
+
         Self {
-            program: shader::Bitmap::new(Size::new(500, 500)),
+            program: bitmap,
             color: Color::WHITE,
             offset: Point::ORIGIN,
         }

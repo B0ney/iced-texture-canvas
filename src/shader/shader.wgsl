@@ -18,16 +18,20 @@ struct VertexIn {
 
 struct VertexOut {
 	@builtin(position) position: vec4<f32>,
+	@location(0) uv: vec2<f32>,
 }
 
 @vertex
 fn vs_main(in: VertexIn) -> VertexOut {
-	let uv = vec2f(vec2u((in.vertex_index << 1) & 2, in.vertex_index & 2));
-	let position = vec4f(uv * 2. - 1., 0., 1.);
-	return VertexOut(position);
+	var out: VertexOut;
+	out.uv = vec2<f32>(0.0);
+	out.uv.x = select(0.0, 2.0, in.vertex_index == 1u);
+    out.uv.y = select(0.0, 2.0, in.vertex_index == 2u);
+	out.position = vec4<f32>(out.uv * vec2<f32>(2.0, -2.0) + vec2<f32>(-1.0, 1.0), 0.0, 1.0) ;
+	return out;
 }
 
 @fragment
 fn fs_main(in: VertexOut) -> @location(0) vec4<f32> {
-    return textureSample(t_diffuse, s_diffuse, uniforms.center);
+    return textureSample(t_diffuse, s_diffuse, in.uv);
 }

@@ -81,14 +81,11 @@ impl shader::Primitive for BitmapPrimatrive {
         // TODO : recreate texture if texture size changed
         let pipeline = storage.get_mut::<Pipeline>().unwrap();
 
-        let texture = &self.pixmap;
-
         pipeline.update(
             queue,
-            texture,
+            &self.pixmap,
             Uniforms {
                 center: self.controls.center,
-                // scale: self.controls.scale(),
             },
         );
     }

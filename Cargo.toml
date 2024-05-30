@@ -13,3 +13,7 @@ git = "https://github.com/B0ney/iced"
 branch = "dylib_reloaded"
 default-features = false
 features = ["wgpu"]
+
+[profile.dev]
+split-debuginfo = "packed"
+incremental = true
