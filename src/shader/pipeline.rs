@@ -1,4 +1,4 @@
-use iced::widget::shader::wgpu;
+use iced::widget::shader::wgpu::{self, util::DeviceExt};
 
 use super::{
     texture,
@@ -9,6 +9,7 @@ pub struct Pipeline {
     pipeline: wgpu::RenderPipeline,
     uniform: uniforms::Uniform,
     texture: texture::Texture,
+    vertices: wgpu::Buffer,
 }
 
 impl Pipeline {
@@ -37,7 +38,15 @@ impl Pipeline {
             vertex: wgpu::VertexState {
                 module: &shader,
                 entry_point: "vs_main",
-                buffers: &[],
+                buffers: &[
+                    wgpu::VertexBufferLayout {
+                        array_stride: 4 * 4,
+                        step_mode: wgpu::VertexStepMode::Vertex,
+                        // 0: vec2 position
+                        // 1: vec2 texture coordinates
+                        attributes: &wgpu::vertex_attr_array![0 => Float32x2, 1 => Float32x2],
+                    }
+                ],
             },
             fragment: Some(wgpu::FragmentState {
                 module: &shader,
@@ -57,15 +66,34 @@ impl Pipeline {
             multiview: None,
         });
 
+        let top = 1.0;
+
+        let vertices: &[[f32; 4]] = &[
+            [-1.0, top, 0.0, 0.0],  // tl
+            [1.0, top, 1.0, 0.0],   // tr
+            [1.0, -1.0, 1.0, 1.0],  // br
+            [1.0, -1.0, 1.0, 1.0],  // br
+            [-1.0, -1.0, 0.0, 1.0], // bl
+            [-1.0, top, 0.0, 0.0],  // tl
+        ];
+
+        let vertices = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
+            label: None,
+            contents: bytemuck::cast_slice(&vertices),
+            usage: wgpu::BufferUsages::VERTEX | wgpu::BufferUsages::COPY_DST,
+        }); 
+
         Self {
             pipeline,
             uniform,
             texture,
+            vertices,
         }
     }
 
     /// TODO: apply uniform buffer to transform, clip texture view.
     pub fn update(&mut self, queue: &wgpu::Queue, pixmap: &texture::Pixmap, uniforms: Uniforms) {
+        // queue.write_buffer(&self.vertices, 0, )
         self.uniform.upload(queue, uniforms);
         self.texture.upload(queue, pixmap);
     }
@@ -104,6 +132,7 @@ impl Pipeline {
         pass.set_bind_group(0, &self.texture.bind_group, &[]);
         pass.set_bind_group(1, &self.uniform.bind_group, &[]);
 
-        pass.draw(0..3, 0..1)
+        pass.set_vertex_buffer(0, self.vertices.slice(..));
+        pass.draw(0..6, 0..1) // TODO
     }
 }
