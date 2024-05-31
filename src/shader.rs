@@ -71,6 +71,25 @@ impl Controls {
     fn scale(&self) -> f32 {
         1.0 / 2.0_f32.powf(self.zoom) / ZOOM_PIXELS_FACTOR
     }
+
+    pub fn build_matrix(&self, aspect_ratio: f32) -> Uniforms {
+
+        let projection =
+            glam::Mat4::perspective_rh(std::f32::consts::FRAC_PI_4, aspect_ratio, 1.0, 100.0);
+
+        let view = glam::Mat4::look_at_rh(
+            glam::Vec3::new(0.0, 0.0, 1.0),
+            glam::Vec3::ZERO,
+            glam::Vec3::Y,
+        );
+
+        Uniforms {
+            center: self.center,
+            scale: self.zoom,
+            _padding: 0.0,
+            matrix: *(projection * view).as_ref(),
+        }
+    }
 }
 
 impl shader::Primitive for BitmapPrimatrive {
@@ -93,11 +112,8 @@ impl shader::Primitive for BitmapPrimatrive {
         pipeline.update(
             queue,
             &self.pixmap,
-            Uniforms {
-                center: self.controls.center,
-                scale: self.controls.zoom,
-                _padding: Default::default(),
-            },
+            self.controls
+                .build_matrix(_bounds.size().width / _bounds.size().height), 
         );
     }
 

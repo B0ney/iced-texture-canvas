@@ -53,10 +53,12 @@ impl Uniform {
 }
 
 /// camera uniforms, watch out for alignment
+/// TODO: make uniform just the transformation matrix
 #[derive(Copy, Clone, Debug, bytemuck::Pod, bytemuck::Zeroable, Default)]
 #[repr(C)]
 pub struct Uniforms {
     pub center: Vec2,
     pub scale: f32,
     pub _padding: f32,
+    pub matrix: [f32; 16],
 }
