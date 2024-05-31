@@ -103,12 +103,7 @@ impl Texture {
             } = texture;
 
             queue.write_texture(
-                wgpu::ImageCopyTexture {
-                    texture: &self.texture,
-                    mip_level: 0,
-                    origin: wgpu::Origin3d::ZERO,
-                    aspect: wgpu::TextureAspect::All,
-                },
+                self.texture.as_image_copy(),
                 bytemuck::cast_slice(buffer),
                 wgpu::ImageDataLayout {
                     offset: 0,
