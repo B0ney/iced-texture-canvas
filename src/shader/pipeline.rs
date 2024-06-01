@@ -1,15 +1,13 @@
 use iced::widget::shader::wgpu::{self, util::DeviceExt};
 
-use super::{
-    texture,
-    uniforms::{self, Uniform, Uniforms},
-};
+use super::texture;
+use super::uniforms::{self, Uniform, UniformsRaw};
 
 pub struct Pipeline {
     pipeline: wgpu::RenderPipeline,
     uniform: uniforms::Uniform,
     texture: texture::Texture,
-    vertices: wgpu::Buffer,
+    quad: Quad,
 }
 
 impl Pipeline {
@@ -23,7 +21,7 @@ impl Pipeline {
             ..wgpu::include_wgsl!("shader.wgsl")
         });
 
-        let texture = texture::Texture::new(device, pixmap.size(), None);
+        let texture = texture::Texture::new(device, pixmap.width(), pixmap.height());
         let uniform = Uniform::new(device);
 
         let pipeline_layout = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
@@ -38,15 +36,13 @@ impl Pipeline {
             vertex: wgpu::VertexState {
                 module: &shader,
                 entry_point: "vs_main",
-                buffers: &[
-                    wgpu::VertexBufferLayout {
-                        array_stride: 4 * 4,
-                        step_mode: wgpu::VertexStepMode::Vertex,
-                        // 0: vec2 position
-                        // 1: vec2 texture coordinates
-                        attributes: &wgpu::vertex_attr_array![0 => Float32x2, 1 => Float32x2],
-                    }
-                ],
+                buffers: &[wgpu::VertexBufferLayout {
+                    array_stride: 4 * 4,
+                    step_mode: wgpu::VertexStepMode::Vertex,
+                    // 0: vec2 position
+                    // 1: vec2 texture coordinates
+                    attributes: &wgpu::vertex_attr_array![0 => Float32x2, 1 => Float32x2],
+                }],
             },
             fragment: Some(wgpu::FragmentState {
                 module: &shader,
@@ -66,34 +62,15 @@ impl Pipeline {
             multiview: None,
         });
 
-        let top = 1.0;
-
-        let vertices: &[[f32; 4]] = &[
-            [-1.0, top, 0.0, 0.0],  // tl
-            [1.0, top, 1.0, 0.0],   // tr
-            [1.0, -1.0, 1.0, 1.0],  // br
-            [1.0, -1.0, 1.0, 1.0],  // br
-            [-1.0, -1.0, 0.0, 1.0], // bl
-            [-1.0, top, 0.0, 0.0],  // tl
-        ];
-
-        let vertices = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
-            label: None,
-            contents: bytemuck::cast_slice(&vertices),
-            usage: wgpu::BufferUsages::VERTEX | wgpu::BufferUsages::COPY_DST,
-        }); 
-
         Self {
             pipeline,
             uniform,
             texture,
-            vertices,
+            quad: Quad::new(device),
         }
     }
 
-    /// TODO: apply uniform buffer to transform, clip texture view.
-    pub fn update(&mut self, queue: &wgpu::Queue, pixmap: &texture::Pixmap, uniforms: Uniforms) {
-        // queue.write_buffer(&self.vertices, 0, )
+    pub fn update(&mut self, queue: &wgpu::Queue, pixmap: &texture::Pixmap, uniforms: UniformsRaw) {
         self.uniform.upload(queue, uniforms);
         self.texture.upload(queue, pixmap);
     }
@@ -132,7 +109,43 @@ impl Pipeline {
         pass.set_bind_group(0, &self.texture.bind_group, &[]);
         pass.set_bind_group(1, &self.uniform.bind_group, &[]);
 
-        pass.set_vertex_buffer(0, self.vertices.slice(..));
-        pass.draw(0..6, 0..1) // TODO
+        pass.set_vertex_buffer(0, self.quad.slice());
+        pass.draw(0..self.quad.vertices(), 0..1)
+    }
+}
+
+/// Quad to draw our texture onto.
+struct Quad(wgpu::Buffer);
+
+impl Quad {
+    const VERTEX: [[f32; 4]; 6] = [
+        // Top-right triangle
+        [-1.0, 1.0, 0.0, 0.0], // tl
+        [1.0, 1.0, 1.0, 0.0],  // tr
+        [1.0, -1.0, 1.0, 1.0], // br
+        // Bottom-left triangle
+        [1.0, -1.0, 1.0, 1.0],  // br
+        [-1.0, -1.0, 0.0, 1.0], // bl
+        [-1.0, 1.0, 0.0, 0.0],  // tl
+    ];
+
+    const VERTICES: u32 = Self::VERTEX.len() as u32;
+
+    fn new(device: &wgpu::Device) -> Self {
+        Self(
+            device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
+                label: Some("Quad Vertex buffer"),
+                contents: bytemuck::cast_slice(&Self::VERTEX),
+                usage: wgpu::BufferUsages::VERTEX | wgpu::BufferUsages::COPY_DST,
+            }),
+        )
+    }
+
+    fn slice(&self) -> wgpu::BufferSlice {
+        self.0.slice(..)
+    }
+
+    fn vertices(&self) -> u32 {
+        Self::VERTICES
     }
 }

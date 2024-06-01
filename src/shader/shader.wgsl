@@ -1,8 +1,6 @@
-
 struct Uniforms {
     @location(0) center: vec2<f32>,
-    @location(1) scale: f32,
-    @location(2) projection: mat4x4<f32>
+    @location(1) projection: mat4x4<f32>
 }
 
 @group(1) @binding(0) 
@@ -28,12 +26,11 @@ struct VertexOut {
 fn vs_main(in: VertexIn) -> VertexOut {
     var out: VertexOut;
     out.tex_coord = in.tex_coord;
-    out.position = uniforms.projection * vec4<f32>(in.position , 0.0, 1.0) * uniforms.scale + vec4<f32>(uniforms.center * uniforms.scale, 0.0, 1.0);
+    out.position = uniforms.projection * vec4<f32>(in.position, 0.0, 1.0) + vec4<f32>(uniforms.center, 0.0, 1.0);
     return out;
 }
 
 @fragment
 fn fs_main(in: VertexOut) -> @location(0) vec4<f32> {
-    let tex = textureSample(t_color, t_sampler, in.tex_coord);
-    return tex;
+    return textureSample(t_color, t_sampler, in.tex_coord);
 }

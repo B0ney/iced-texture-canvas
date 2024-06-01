@@ -1,4 +1,3 @@
-use parking_lot::RwLock;
 use std::{fmt::Debug, sync::Arc};
 
 use iced::widget::shader::wgpu;
@@ -11,9 +10,7 @@ pub struct Texture {
 }
 
 impl Texture {
-    pub fn new(device: &wgpu::Device, size: (u32, u32), label: Option<&str>) -> Self {
-        let (width, height) = size;
-
+    pub fn new(device: &wgpu::Device, width: u32, height: u32) -> Self {
         let size = wgpu::Extent3d {
             width,
             height,
@@ -36,7 +33,7 @@ impl Texture {
         let texture_view = texture.create_view(&Default::default());
 
         let sampler = device.create_sampler(&wgpu::SamplerDescriptor {
-            label,
+            label: None,
             address_mode_u: wgpu::AddressMode::ClampToEdge,
             address_mode_v: wgpu::AddressMode::ClampToEdge,
             address_mode_w: wgpu::AddressMode::ClampToEdge,
@@ -131,7 +128,7 @@ pub struct PixmapMut<'a> {
 /// RGBA pixmap shared between the cpu and gpu
 #[derive(Clone)]
 pub struct Pixmap {
-    buffer: Arc<RwLock<Box<[u32]>>>,
+    buffer: Arc<parking_lot::RwLock<Box<[u32]>>>,
     width: u32,
     height: u32,
 }
@@ -152,7 +149,7 @@ impl Pixmap {
         let buffer = vec![0; width as usize * height as usize].into_boxed_slice();
 
         Self {
-            buffer: Arc::new(RwLock::new(buffer)),
+            buffer: Arc::new(parking_lot::RwLock::new(buffer)),
             width,
             height,
         }
@@ -188,7 +185,7 @@ impl Pixmap {
         self.height
     }
 
-    pub fn size(&self) -> (u32, u32) {
-        (self.width, self.height)
+    pub fn size(&self) -> iced::Size<f32> {
+        (self.width as f32, self.height as f32).into()
     }
 }
