@@ -73,7 +73,6 @@ impl Controls {
     }
 
     pub fn build_matrix(&self, aspect_ratio: f32) -> Uniforms {
-
         let projection =
             glam::Mat4::perspective_rh(std::f32::consts::FRAC_PI_4, aspect_ratio, 1.0, 100.0);
 
@@ -99,7 +98,7 @@ impl shader::Primitive for BitmapPrimatrive {
         queue: &wgpu::Queue,
         format: wgpu::TextureFormat,
         storage: &mut shader::Storage,
-        _bounds: &iced::Rectangle,
+        bounds: &iced::Rectangle,
         _viewport: &shader::Viewport,
     ) {
         if !storage.has::<Pipeline>() {
@@ -109,11 +108,14 @@ impl shader::Primitive for BitmapPrimatrive {
         // TODO : recreate texture if texture size changed
         let pipeline = storage.get_mut::<Pipeline>().unwrap();
 
+        let text_ar = self.pixmap.width() as f32 / self.pixmap.height() as f32;
+        let scr_ar = bounds.size().width / bounds.size().height;
+        let aspect_ratio = scr_ar / text_ar;
+
         pipeline.update(
             queue,
             &self.pixmap,
-            self.controls
-                .build_matrix(_bounds.size().width / _bounds.size().height), 
+            self.controls.build_matrix(aspect_ratio),
         );
     }
 
