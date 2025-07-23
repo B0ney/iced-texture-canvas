@@ -13,11 +13,18 @@ iced_texture = { path = "." }
 bytemuck = { version = "1.16.0", features = ["derive"] }
 glam = { version = "0.27.0", features = [ "bytemuck" ] }
 
-iced_wgpu = { git = "https://github.com/iced-rs/iced" }
-iced_renderer = { git = "https://github.com/iced-rs/iced", features = ["wgpu"] }
-iced_widget = { git = "https://github.com/iced-rs/iced", features = ["wgpu"] }
-iced_core = { git = "https://github.com/iced-rs/iced" }
+iced_core = { version = "0.14.0-dev"  }
+iced_wgpu = { version = "0.14.0-dev" }
+iced_renderer = { version = "0.14.0-dev", features = ["wgpu"] }
+iced_widget = { version = "0.14.0-dev" , features = ["wgpu"] }
 
 [profile.dev]
 split-debuginfo = "packed"
 incremental = true
+
+[patch.crates-io]
+iced.git = "https://github.com/iced-rs/iced.git"
+iced_core.git = "https://github.com/iced-rs/iced.git"
+iced_wgpu.git = "https://github.com/iced-rs/iced.git"
+iced_renderer.git = "https://github.com/iced-rs/iced.git"
+iced_widget.git = "https://github.com/iced-rs/iced.git"

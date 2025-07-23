@@ -5,8 +5,4 @@ edition = "2024"
 
 [dependencies]
 iced_texture.workspace = true
-
-[dependencies.iced]
-git = "https://github.com/iced-rs/iced"
-default-features = false
-features = ["wgpu", "smol"]
+iced = { version = "0.14.0-dev", default-features = false, features = ["wgpu", "smol"]}

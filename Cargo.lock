@@ -609,7 +609,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "778e2ac28f6c47af28e4907f13ffd1e1ddbd400980a9abd7c8df189bf578a5ad"
 dependencies = [
  "libc",
- "windows-sys 0.59.0",
+ "windows-sys 0.60.2",
 ]
 
 [[package]]
@@ -996,7 +996,7 @@ checksum = "dfa686283ad6dd069f105e5ab091b04c62850d3e4cf5d67debad1933f55023df"
 [[package]]
 name = "iced"
 version = "0.14.0-dev"
-source = "git+https://github.com/iced-rs/iced#d4f8e1902322b239be9580b3afb936c99ec49b79"
+source = "git+https://github.com/iced-rs/iced.git#d4f8e1902322b239be9580b3afb936c99ec49b79"
 dependencies = [
  "iced_core",
  "iced_debug",
@@ -1011,7 +1011,7 @@ dependencies = [
 [[package]]
 name = "iced_core"
 version = "0.14.0-dev"
-source = "git+https://github.com/iced-rs/iced#d4f8e1902322b239be9580b3afb936c99ec49b79"
+source = "git+https://github.com/iced-rs/iced.git#d4f8e1902322b239be9580b3afb936c99ec49b79"
 dependencies = [
  "bitflags 2.9.1",
  "bytes",
@@ -1028,7 +1028,7 @@ dependencies = [
 [[package]]
 name = "iced_debug"
 version = "0.14.0-dev"
-source = "git+https://github.com/iced-rs/iced#d4f8e1902322b239be9580b3afb936c99ec49b79"
+source = "git+https://github.com/iced-rs/iced.git#d4f8e1902322b239be9580b3afb936c99ec49b79"
 dependencies = [
  "iced_core",
  "iced_futures",
@@ -1038,7 +1038,7 @@ dependencies = [
 [[package]]
 name = "iced_futures"
 version = "0.14.0-dev"
-source = "git+https://github.com/iced-rs/iced#d4f8e1902322b239be9580b3afb936c99ec49b79"
+source = "git+https://github.com/iced-rs/iced.git#d4f8e1902322b239be9580b3afb936c99ec49b79"
 dependencies = [
  "futures",
  "iced_core",
@@ -1052,7 +1052,7 @@ dependencies = [
 [[package]]
 name = "iced_graphics"
 version = "0.14.0-dev"
-source = "git+https://github.com/iced-rs/iced#d4f8e1902322b239be9580b3afb936c99ec49b79"
+source = "git+https://github.com/iced-rs/iced.git#d4f8e1902322b239be9580b3afb936c99ec49b79"
 dependencies = [
  "bitflags 2.9.1",
  "bytemuck",
@@ -1070,7 +1070,7 @@ dependencies = [
 [[package]]
 name = "iced_program"
 version = "0.14.0-dev"
-source = "git+https://github.com/iced-rs/iced#d4f8e1902322b239be9580b3afb936c99ec49b79"
+source = "git+https://github.com/iced-rs/iced.git#d4f8e1902322b239be9580b3afb936c99ec49b79"
 dependencies = [
  "iced_graphics",
  "iced_runtime",
@@ -1079,7 +1079,7 @@ dependencies = [
 [[package]]
 name = "iced_renderer"
 version = "0.14.0-dev"
-source = "git+https://github.com/iced-rs/iced#d4f8e1902322b239be9580b3afb936c99ec49b79"
+source = "git+https://github.com/iced-rs/iced.git#d4f8e1902322b239be9580b3afb936c99ec49b79"
 dependencies = [
  "iced_graphics",
  "iced_wgpu",
@@ -1090,7 +1090,7 @@ dependencies = [
 [[package]]
 name = "iced_runtime"
 version = "0.14.0-dev"
-source = "git+https://github.com/iced-rs/iced#d4f8e1902322b239be9580b3afb936c99ec49b79"
+source = "git+https://github.com/iced-rs/iced.git#d4f8e1902322b239be9580b3afb936c99ec49b79"
 dependencies = [
  "bytes",
  "iced_core",
@@ -1115,7 +1115,7 @@ dependencies = [
 [[package]]
 name = "iced_wgpu"
 version = "0.14.0-dev"
-source = "git+https://github.com/iced-rs/iced#d4f8e1902322b239be9580b3afb936c99ec49b79"
+source = "git+https://github.com/iced-rs/iced.git#d4f8e1902322b239be9580b3afb936c99ec49b79"
 dependencies = [
  "bitflags 2.9.1",
  "bytemuck",
@@ -1134,7 +1134,7 @@ dependencies = [
 [[package]]
 name = "iced_widget"
 version = "0.14.0-dev"
-source = "git+https://github.com/iced-rs/iced#d4f8e1902322b239be9580b3afb936c99ec49b79"
+source = "git+https://github.com/iced-rs/iced.git#d4f8e1902322b239be9580b3afb936c99ec49b79"
 dependencies = [
  "iced_renderer",
  "iced_runtime",
@@ -1148,7 +1148,7 @@ dependencies = [
 [[package]]
 name = "iced_winit"
 version = "0.14.0-dev"
-source = "git+https://github.com/iced-rs/iced#d4f8e1902322b239be9580b3afb936c99ec49b79"
+source = "git+https://github.com/iced-rs/iced.git#d4f8e1902322b239be9580b3afb936c99ec49b79"
 dependencies = [
  "iced_debug",
  "iced_program",
@@ -1951,7 +1951,7 @@ dependencies = [
  "errno",
  "libc",
  "linux-raw-sys 0.9.4",
- "windows-sys 0.59.0",
+ "windows-sys 0.60.2",
 ]
 
 [[package]]
