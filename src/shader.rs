@@ -1,5 +1,5 @@
 pub mod pipeline;
-mod texture;
+pub mod texture;
 pub mod uniforms;
 
 use glam::Vec2;
@@ -9,6 +9,23 @@ use iced::{wgpu, Point};
 use pipeline::Pipeline;
 use uniforms::UniformsRaw;
 
+/// Image data stored by the CPU
+pub trait Surface {
+    fn format(&self) -> wgpu::TextureFormat;
+    fn raw(&self) -> &[u8];
+    fn width(&self) -> u32;
+    fn height(&self) -> u32;
+    fn is_dirty(&self) -> bool;
+    fn reset_dirty(&self);
+}
+
+fn run_if_modified(surface: impl Surface, func: impl FnOnce(&[u8])) {
+    if surface.is_dirty() {
+        func(surface.raw());
+        surface.reset_dirty();
+    }
+}
+
 #[derive(Default, Clone)]
 pub struct State {
     canvas_grab: Option<glam::Vec2>,
@@ -17,24 +34,27 @@ pub struct State {
     zoom: f32,
 }
 
-#[derive(Debug, Clone)]
-pub struct Bitmap {
-    pub controls: Controls,
-    pub buffer: texture::Pixmap,
+// #[derive(Debug)]
+pub struct TextureCanvas<'a, Message> {
+    pub buffer: &'a texture::Pixmap,
+    pub controls: &'a Controls,
+    pub on_drag: Option<Box<dyn Fn(Point) -> Message + 'a>>,
+    pub on_zoom: Option<Box<dyn Fn(f32) -> Message + 'a>>,
 }
 
-impl Bitmap {
-    pub fn new(size: Size<u32>) -> Self {
+impl<'a, Message> TextureCanvas<'a, Message> {
+    pub fn new(buffer: &'a texture::Pixmap, controls: &'a Controls) -> Self {
         Self {
-            controls: Controls::default(),
-            buffer: texture::Pixmap::new(size.width, size.height),
+            buffer,
+            controls,
+            on_drag: None,
+            on_zoom: None,
         }
     }
 }
 
-impl<Message> shader::Program<Message> for Bitmap {
+impl<'a, Message> shader::Program<Message> for TextureCanvas<'a, Message> {
     type State = State;
-
     type Primitive = BitmapPrimatrive;
 
     fn draw(
@@ -44,7 +64,7 @@ impl<Message> shader::Program<Message> for Bitmap {
         bounds: iced::Rectangle,
     ) -> Self::Primitive {
         Self::Primitive::new(
-            self.controls,
+            *self.controls,
             self.buffer.clone(),
             state.canvas_offset,
             state.zoom.clamp(1.0, 100.),
@@ -62,6 +82,7 @@ impl<Message> shader::Program<Message> for Bitmap {
             return None;
         }
         let mut action = None;
+        // shader::Action::publish(message)
 
         if let mouse::Cursor::Available(mouse_pos) = cursor {
             if state.grabbing {
@@ -69,7 +90,12 @@ impl<Message> shader::Program<Message> for Bitmap {
                 match state.canvas_grab {
                     Some(pos) => {
                         state.canvas_offset = Vec2::new(mouse_pos.x, mouse_pos.y) / scale - pos;
-                        action = Some(shader::Action::request_redraw());
+                        if let Some(on_click) = self.on_drag.as_ref() {
+                            todo!()
+                            // action = Some(shader::Action::publish(on_click()))
+                        } else {
+                            action = Some(shader::Action::request_redraw());
+                        }
                     }
                     None => {
                         let position = Vec2::new(mouse_pos.x, mouse_pos.y);
