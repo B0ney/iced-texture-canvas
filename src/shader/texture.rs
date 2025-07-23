@@ -171,6 +171,12 @@ impl Surface {
     }
 }
 
+impl Clone for Surface {
+    fn clone(&self) -> Self {
+        Self(Arc::new(SurfaceInner::clone(&self.0)))
+    }
+}
+
 pub(crate) struct SurfaceInner {
     buffer: Vec<u32>,
     width: u32,
@@ -234,6 +240,7 @@ impl Clone for SurfaceInner {
         }
     }
 }
+
 impl Debug for SurfaceInner {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.debug_struct("surface")
