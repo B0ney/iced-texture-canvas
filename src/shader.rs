@@ -146,7 +146,7 @@ impl<'a, Message> shader::Program<Message> for TextureCanvas<'a, Message> {
                         // 100% = far right, or bottm
                         //
                         // after scaling, we adjust the offset of the canvas to match this.
-                        println!("{}", y);
+                        // println!("{}", y);
                         state.zoom = (state.zoom + y).clamp(1.0, 5.0);
                         action = Some(shader::Action::request_redraw());
                         state.canvas_offset = Vec2::new(mouse_pos.x, mouse_pos.y) / state.zoom;
@@ -231,6 +231,12 @@ impl shader::Primitive for Primitive {
         }
 
         let pipeline = storage.get_mut::<Pipeline>().unwrap();
+
+        let texture_size = pipeline.texture.size;
+
+        if surface.width() != texture_size.width || surface.height() != texture_size.height {
+            *pipeline = Pipeline::new(device, format, &surface);
+        }
 
         let scale = self.zoom_override;
         // TODO: recreate texture if sizes differ
