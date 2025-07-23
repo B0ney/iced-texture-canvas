@@ -1,16 +1,22 @@
 [package]
-name = "iced_wgpu_shader"
+name = "iced_texture"
 version = "0.1.0"
-edition = "2021"
+edition = "2024"
+
+[workspace]
+members = ["examples/*"]
+
+[workspace.dependencies]
+iced_texture = { path = "." }
 
 [dependencies]
 bytemuck = { version = "1.16.0", features = ["derive"] }
 glam = { version = "0.27.0", features = [ "bytemuck" ] }
 
-[dependencies.iced]
-git = "https://github.com/iced-rs/iced"
-default-features = false
-features = ["wgpu", "smol"]
+iced_wgpu = { git = "https://github.com/iced-rs/iced" }
+iced_renderer = { git = "https://github.com/iced-rs/iced", features = ["wgpu"] }
+iced_widget = { git = "https://github.com/iced-rs/iced", features = ["wgpu"] }
+iced_core = { git = "https://github.com/iced-rs/iced" }
 
 [profile.dev]
 split-debuginfo = "packed"

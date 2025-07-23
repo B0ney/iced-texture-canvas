@@ -1,6 +1,8 @@
-use iced::wgpu;
+use iced_core::Rectangle;
+use iced_wgpu::wgpu;
 
-use super::texture::{self, SurfaceInner};
+use super::handle::SurfaceInner;
+use super::texture::{self};
 use super::uniforms::{self, Uniform};
 
 pub(crate) struct Pipeline {
@@ -64,7 +66,7 @@ impl Pipeline {
     pub fn render(
         &self,
         target: &wgpu::TextureView,
-        viewport: &iced::Rectangle<u32>,
+        viewport: &Rectangle<u32>,
         encoder: &mut wgpu::CommandEncoder,
     ) {
         let mut pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {

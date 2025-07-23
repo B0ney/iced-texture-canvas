@@ -554,6 +554,14 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "f27ae1dd37df86211c42e150270f82743308803d90a6f6e6651cd730d5e1732f"
 
 [[package]]
+name = "demo"
+version = "0.1.0"
+dependencies = [
+ "iced",
+ "iced_texture",
+]
+
+[[package]]
 name = "dispatch"
 version = "0.2.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -601,7 +609,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "778e2ac28f6c47af28e4907f13ffd1e1ddbd400980a9abd7c8df189bf578a5ad"
 dependencies = [
  "libc",
- "windows-sys 0.60.2",
+ "windows-sys 0.59.0",
 ]
 
 [[package]]
@@ -1093,6 +1101,18 @@ dependencies = [
 ]
 
 [[package]]
+name = "iced_texture"
+version = "0.1.0"
+dependencies = [
+ "bytemuck",
+ "glam 0.27.0",
+ "iced_core",
+ "iced_renderer",
+ "iced_wgpu",
+ "iced_widget",
+]
+
+[[package]]
 name = "iced_wgpu"
 version = "0.14.0-dev"
 source = "git+https://github.com/iced-rs/iced#d4f8e1902322b239be9580b3afb936c99ec49b79"
@@ -1109,15 +1129,6 @@ dependencies = [
  "rustc-hash 2.1.1",
  "thiserror 1.0.69",
  "wgpu",
-]
-
-[[package]]
-name = "iced_wgpu_shader"
-version = "0.1.0"
-dependencies = [
- "bytemuck",
- "glam 0.27.0",
- "iced",
 ]
 
 [[package]]
@@ -1940,7 +1951,7 @@ dependencies = [
  "errno",
  "libc",
  "linux-raw-sys 0.9.4",
- "windows-sys 0.60.2",
+ "windows-sys 0.59.0",
 ]
 
 [[package]]

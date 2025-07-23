@@ -1,5 +1,6 @@
 use glam::Vec2;
-use iced::wgpu;
+use iced_core::Size;
+use iced_wgpu::wgpu;
 
 pub struct Uniform {
     pub buffer: wgpu::Buffer,
@@ -59,7 +60,7 @@ pub struct UniformsRaw {
 }
 
 impl UniformsRaw {
-    pub fn new(center: Vec2, zoom: f32, screen: iced::Size<f32>, texture: iced::Size<f32>) -> Self {
+    pub fn new(center: Vec2, zoom: f32, screen: Size<f32>, texture: Size<f32>) -> Self {
         let (width, height) = (screen.width, screen.height);
 
         let position = center;

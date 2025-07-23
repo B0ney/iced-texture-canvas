@@ -1,47 +1,92 @@
+pub mod handle;
 pub mod pipeline;
 pub mod texture;
 pub mod uniforms;
 
 use std::sync::Weak;
-
 use glam::Vec2;
 
-use iced::wgpu;
-use iced::widget::shader;
-use iced::{mouse, Event, Point};
+use iced_core::{Event, Length, Point, Rectangle, mouse};
+use iced_wgpu::wgpu;
+use iced_widget::shader;
 
+use handle::SurfaceInner;
 use pipeline::Pipeline;
-use texture::SurfaceInner;
 use uniforms::UniformsRaw;
 
-// #[derive(Debug)]
+pub fn texture<'a, Message: 'a>(
+    buffer: &'a handle::Surface,
+    controls: &'a Controls,
+) -> TextureCanvas<'a, Message> {
+    TextureCanvas::new(buffer, controls)
+}
+
 pub struct TextureCanvas<'a, Message> {
-    pub buffer: &'a texture::Surface,
-    pub controls: &'a Controls,
-    pub on_drag: Option<Box<dyn Fn(Point) -> Message + 'a>>,
-    pub on_zoom: Option<Box<dyn Fn(f32) -> Message + 'a>>,
+    buffer: &'a handle::Surface,
+    controls: &'a Controls,
+    width: Length,
+    height: Length,
+    on_drag: Option<Box<dyn Fn(Point) -> Message + 'a>>,
+    on_zoom: Option<Box<dyn Fn(f32) -> Message + 'a>>,
 }
 
 impl<'a, Message> TextureCanvas<'a, Message> {
-    pub fn new(buffer: &'a texture::Surface, controls: &'a Controls) -> Self {
+    pub fn new(buffer: &'a handle::Surface, controls: &'a Controls) -> Self {
         Self {
             buffer,
             controls,
             on_drag: None,
             on_zoom: None,
+            width: Length::Fill,
+            height: Length::Fill,
         }
+    }
+
+    /// Set the `width` of the custom [`TextureCanvas`].
+    pub fn width(mut self, width: impl Into<Length>) -> Self {
+        self.width = width.into();
+        self
+    }
+
+    /// Set the `height` of the [`TextureCanvas`].
+    pub fn height(mut self, height: impl Into<Length>) -> Self {
+        self.height = height.into();
+        self
+    }
+
+    pub fn on_drag(mut self, on_drag: impl Fn(Point) -> Message + 'a) -> Self {
+        self.on_drag = Some(Box::new(on_drag));
+        self
+    }
+
+    pub fn on_zoom(mut self, on_zoom: impl Fn(f32) -> Message + 'a) -> Self {
+        self.on_zoom = Some(Box::new(on_zoom));
+        self
+    }
+}
+
+impl<'a, Message, Theme, Renderer> From<TextureCanvas<'a, Message>>
+    for iced_core::Element<'a, Message, Theme, Renderer>
+where
+    Message: 'a + Clone,
+    Renderer: iced_wgpu::primitive::Renderer,
+{
+    fn from(value: TextureCanvas<'a, Message>) -> Self {
+        let width = value.width;
+        let height = value.height;
+        shader(value).width(width).height(height).into()
     }
 }
 
 impl<'a, Message> shader::Program<Message> for TextureCanvas<'a, Message> {
     type State = State;
-    type Primitive = BitmapPrimatrive;
+    type Primitive = Primitive;
 
     fn draw(
         &self,
         state: &Self::State,
         cursor: mouse::Cursor,
-        bounds: iced::Rectangle,
+        bounds: Rectangle,
     ) -> Self::Primitive {
         Self::Primitive::new(
             *self.controls,
@@ -54,8 +99,8 @@ impl<'a, Message> shader::Program<Message> for TextureCanvas<'a, Message> {
     fn update(
         &self,
         state: &mut Self::State,
-        event: &iced::Event,
-        bounds: iced::Rectangle,
+        event: &Event,
+        bounds: Rectangle,
         cursor: mouse::Cursor,
     ) -> Option<shader::Action<Message>> {
         if !cursor.is_over(bounds) {
@@ -127,17 +172,17 @@ pub struct State {
 }
 
 #[derive(Debug)]
-pub struct BitmapPrimatrive {
+pub struct Primitive {
     controls: Controls,
     surface: Weak<SurfaceInner>,
     offset: glam::Vec2,
     zoom_override: f32,
 }
 
-impl BitmapPrimatrive {
+impl Primitive {
     pub fn new(
         controls: Controls,
-        pixmap: &texture::Surface,
+        pixmap: &handle::Surface,
         offset: glam::Vec2,
         zoom_override: f32,
     ) -> Self {
@@ -152,27 +197,27 @@ impl BitmapPrimatrive {
 
 #[derive(Debug, Clone, Copy)]
 pub struct Controls {
-    pub zoom: f32,
+    pub scale: f32,
     pub center: Vec2,
 }
 
 impl Default for Controls {
     fn default() -> Self {
         Self {
-            zoom: 1.0,
+            scale: 1.0,
             center: Default::default(),
         }
     }
 }
 
-impl shader::Primitive for BitmapPrimatrive {
+impl shader::Primitive for Primitive {
     fn prepare(
         &self,
         device: &wgpu::Device,
         queue: &wgpu::Queue,
         format: wgpu::TextureFormat,
         storage: &mut shader::Storage,
-        bounds: &iced::Rectangle,
+        bounds: &Rectangle,
         _viewport: &shader::Viewport,
     ) {
         let Some(surface) = self.surface.upgrade() else {
@@ -224,7 +269,7 @@ impl shader::Primitive for BitmapPrimatrive {
         encoder: &mut wgpu::CommandEncoder,
         storage: &shader::Storage,
         target: &wgpu::TextureView,
-        clip_bounds: &iced::Rectangle<u32>,
+        clip_bounds: &Rectangle<u32>,
     ) {
         if let Some(pipeline) = storage.get::<Pipeline>() {
             pipeline.render(target, clip_bounds, encoder);
