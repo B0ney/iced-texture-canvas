@@ -3,8 +3,8 @@ pub mod pipeline;
 pub mod texture;
 pub mod uniforms;
 
-use std::sync::Weak;
 use glam::Vec2;
+use std::sync::Weak;
 
 use iced_core::{Event, Length, Point, Rectangle, mouse};
 use iced_wgpu::wgpu;
@@ -68,7 +68,7 @@ impl<'a, Message> TextureCanvas<'a, Message> {
 impl<'a, Message, Theme, Renderer> From<TextureCanvas<'a, Message>>
     for iced_core::Element<'a, Message, Theme, Renderer>
 where
-    Message: 'a + Clone,
+    Message: 'a,
     Renderer: iced_wgpu::primitive::Renderer,
 {
     fn from(value: TextureCanvas<'a, Message>) -> Self {
