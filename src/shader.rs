@@ -188,6 +188,7 @@ impl shader::Primitive for BitmapPrimatrive {
         let pipeline = storage.get_mut::<Pipeline>().unwrap();
 
         let scale = self.zoom_override;
+        // TODO: recreate texture if sizes differ
         let size = pipeline.texture.size;
 
         let uniforms = UniformsRaw::new(

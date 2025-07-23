@@ -10,7 +10,7 @@ pub struct Uniform {
 impl Uniform {
     pub fn new(device: &wgpu::Device) -> Self {
         let buffer = device.create_buffer(&wgpu::BufferDescriptor {
-            label: Some("controls uniform"),
+            label: Some("uniform"),
             usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
             size: std::mem::size_of::<UniformsRaw>() as u64,
             mapped_at_creation: false,
@@ -52,13 +52,10 @@ impl Uniform {
     }
 }
 
-/// TODO: make uniform just the transformation matrix
 #[derive(Copy, Clone, Debug, bytemuck::Pod, bytemuck::Zeroable, Default)]
 #[repr(C)]
 pub struct UniformsRaw {
-    pub center: Vec2,
-    pub _padding: [f32; 2],
-    pub matrix: [f32; 16],
+    pub transform: [f32; 16],
 }
 
 impl UniformsRaw {
@@ -76,9 +73,7 @@ impl UniformsRaw {
             * glam::Mat4::from_scale(glam::Vec3::new(zoom, zoom, 0.0));
 
         UniformsRaw {
-            center: position,
-            _padding: Default::default(),
-            matrix: *(projection * transform).as_ref(),
+            transform: *(projection * transform).as_ref(),
         }
     }
 }

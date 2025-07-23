@@ -1,6 +1,5 @@
 struct Uniforms {
-    @location(0) center: vec2<f32>,
-    @location(1) projection: mat4x4<f32>
+    @location(0) projection: mat4x4<f32>
 }
 
 @group(1) @binding(0) 

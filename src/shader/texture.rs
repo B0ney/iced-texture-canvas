@@ -90,9 +90,6 @@ impl Texture {
         }
     }
 
-    /// Upload texture to gpu
-    ///
-    /// TODO: only upload texture to gpu if changed
     pub fn upload(&mut self, queue: &wgpu::Queue, pixmap: &PixmapRef) {
         queue.write_texture(
             self.texture.as_image_copy(),
@@ -247,6 +244,7 @@ impl Debug for SurfaceInner {
     }
 }
 
+#[derive(Clone, Copy)]
 pub struct PixmapRef<'a> {
     pub buffer: &'a [u32],
     pub width: u32,
