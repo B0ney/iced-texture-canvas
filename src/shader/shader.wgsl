@@ -13,8 +13,7 @@ var t_color: texture_2d<f32>;
 var t_sampler: sampler;
 
 struct VertexIn {
-    @location(0) position: vec2<f32>,
-    @location(1) tex_coord: vec2<f32>,
+    @builtin(vertex_index) vertex_index: u32,
 }
 
 struct VertexOut {
@@ -24,9 +23,23 @@ struct VertexOut {
 
 @vertex
 fn vs_main(in: VertexIn) -> VertexOut {
+    let pos = array(
+        // 1st triangle
+        vec2f(0.0,  0.0),  // center
+        vec2f(1.0,  0.0),  // right, center
+        vec2f(0.0,  1.0),  // center, top
+
+        // 2nd triangle
+        vec2f(0.0,  1.0),  // center, top
+        vec2f(1.0,  0.0),  // right, center
+        vec2f(1.0,  1.0),  // right, top
+    );
+
+    let xy = pos[in.vertex_index];
+    
     var out: VertexOut;
-    out.tex_coord = in.tex_coord;
-    out.position = uniforms.projection * vec4<f32>(in.position, 0.0, 1.0) + vec4<f32>(uniforms.center, 0.0, 1.0);
+    out.tex_coord = vec2f(xy.x, xy.y);
+    out.position =  uniforms.projection * vec4f(xy, 0.0, 1.0) ;
     return out;
 }
 

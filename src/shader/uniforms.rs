@@ -1,5 +1,5 @@
 use glam::Vec2;
-use iced::widget::shader::wgpu;
+use iced::wgpu;
 
 pub struct Uniform {
     pub buffer: wgpu::Buffer,
@@ -63,21 +63,26 @@ pub struct UniformsRaw {
 
 impl UniformsRaw {
     pub fn new(center: Vec2, zoom: f32, screen: iced::Size<f32>, texture: iced::Size<f32>) -> Self {
-        let aspect_ratio = (screen.width * texture.height) / (screen.height * texture.width);
+        let (width, height) = (screen.width, screen.height);
 
-        let projection =
-            glam::Mat4::perspective_rh(std::f32::consts::FRAC_PI_4, aspect_ratio, 1.0, 100.0);
+        let position = center;
+        let projection = scren_to_mat(0.0, width, height, 0.);
 
-        let view = glam::Mat4::look_at_rh(
-            glam::Vec3::new(0.0, 0.0, 1.0),
-            glam::Vec3::ZERO,
-            glam::Vec3::Y,
-        );
+        let scale = glam::Vec3::new(texture.width, texture.height, 0.0);
+        let pos = glam::Vec3::new(position.x, position.y, 0.0);
+
+        let transform = glam::Mat4::from_translation(pos)
+            * glam::Mat4::from_scale(scale)
+            * glam::Mat4::from_scale(glam::Vec3::new(zoom, zoom, 0.0));
 
         UniformsRaw {
-            center: center,
+            center: position,
             _padding: Default::default(),
-            matrix: *(projection * view * zoom).as_ref(),
+            matrix: *(projection * transform).as_ref(),
         }
     }
+}
+
+fn scren_to_mat(left: f32, right: f32, bottom: f32, up: f32) -> glam::Mat4 {
+    glam::Mat4::orthographic_rh(left, right, bottom, up, 0., 1.)
 }

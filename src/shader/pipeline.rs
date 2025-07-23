@@ -1,4 +1,4 @@
-use iced::widget::shader::wgpu::{self, util::DeviceExt};
+use iced::wgpu;
 
 use super::texture;
 use super::uniforms::{self, Uniform, UniformsRaw};
@@ -6,8 +6,7 @@ use super::uniforms::{self, Uniform, UniformsRaw};
 pub struct Pipeline {
     pipeline: wgpu::RenderPipeline,
     uniform: uniforms::Uniform,
-    texture: texture::Texture,
-    quad: Quad,
+    pub texture: texture::Texture,
 }
 
 impl Pipeline {
@@ -35,18 +34,13 @@ impl Pipeline {
             layout: Some(&pipeline_layout),
             vertex: wgpu::VertexState {
                 module: &shader,
-                entry_point: "vs_main",
-                buffers: &[wgpu::VertexBufferLayout {
-                    array_stride: 4 * 4,
-                    step_mode: wgpu::VertexStepMode::Vertex,
-                    // 0: vec2 position
-                    // 1: vec2 texture coordinates
-                    attributes: &wgpu::vertex_attr_array![0 => Float32x2, 1 => Float32x2],
-                }],
+                entry_point: Some("vs_main"),
+                buffers: &[],
+                compilation_options: Default::default(),
             },
             fragment: Some(wgpu::FragmentState {
                 module: &shader,
-                entry_point: "fs_main",
+                entry_point: Some("fs_main"),
                 targets: &[Some(wgpu::ColorTargetState {
                     format,
                     blend: Some(wgpu::BlendState {
@@ -55,18 +49,19 @@ impl Pipeline {
                     }),
                     write_mask: wgpu::ColorWrites::ALL,
                 })],
+                compilation_options: Default::default(),
             }),
             primitive: wgpu::PrimitiveState::default(),
             depth_stencil: None,
             multisample: wgpu::MultisampleState::default(),
             multiview: None,
+            cache: None,
         });
 
         Self {
             pipeline,
             uniform,
             texture,
-            quad: Quad::new(device),
         }
     }
 
@@ -90,6 +85,7 @@ impl Pipeline {
                     load: wgpu::LoadOp::Load,
                     store: wgpu::StoreOp::Store,
                 },
+                depth_slice: None,
             })],
             depth_stencil_attachment: None,
             timestamp_writes: None,
@@ -109,43 +105,6 @@ impl Pipeline {
         pass.set_bind_group(0, &self.texture.bind_group, &[]);
         pass.set_bind_group(1, &self.uniform.bind_group, &[]);
 
-        pass.set_vertex_buffer(0, self.quad.slice());
-        pass.draw(0..self.quad.vertices(), 0..1)
-    }
-}
-
-/// Quad to draw our texture onto.
-struct Quad(wgpu::Buffer);
-
-impl Quad {
-    const VERTEX: [[f32; 4]; 6] = [
-        // Top-right triangle
-        [-1.0, 1.0, 0.0, 0.0], // tl
-        [1.0, 1.0, 1.0, 0.0],  // tr
-        [1.0, -1.0, 1.0, 1.0], // br
-        // Bottom-left triangle
-        [1.0, -1.0, 1.0, 1.0],  // br
-        [-1.0, -1.0, 0.0, 1.0], // bl
-        [-1.0, 1.0, 0.0, 0.0],  // tl
-    ];
-
-    const VERTICES: u32 = Self::VERTEX.len() as u32;
-
-    fn new(device: &wgpu::Device) -> Self {
-        Self(
-            device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
-                label: Some("Quad Vertex buffer"),
-                contents: bytemuck::cast_slice(&Self::VERTEX),
-                usage: wgpu::BufferUsages::VERTEX | wgpu::BufferUsages::COPY_DST,
-            }),
-        )
-    }
-
-    fn slice(&self) -> wgpu::BufferSlice {
-        self.0.slice(..)
-    }
-
-    fn vertices(&self) -> u32 {
-        Self::VERTICES
+        pass.draw(0..6, 0..1)
     }
 }

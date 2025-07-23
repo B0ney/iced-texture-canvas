@@ -1,6 +1,6 @@
 use std::{fmt::Debug, sync::Arc};
 
-use iced::widget::shader::wgpu;
+use iced::wgpu;
 
 pub struct Texture {
     pub texture: wgpu::Texture,
@@ -102,7 +102,7 @@ impl Texture {
             queue.write_texture(
                 self.texture.as_image_copy(),
                 bytemuck::cast_slice(buffer),
-                wgpu::ImageDataLayout {
+                wgpu::TexelCopyBufferLayout {
                     offset: 0,
                     bytes_per_row: Some(4 * width),
                     rows_per_image: Some(height),
