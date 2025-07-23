@@ -1118,7 +1118,6 @@ dependencies = [
  "bytemuck",
  "glam 0.27.0",
  "iced",
- "parking_lot",
 ]
 
 [[package]]

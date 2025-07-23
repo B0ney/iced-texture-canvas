@@ -2,48 +2,28 @@ pub mod pipeline;
 pub mod texture;
 pub mod uniforms;
 
+use std::sync::Weak;
+
 use glam::Vec2;
+
+use iced::wgpu;
 use iced::widget::shader;
-use iced::{mouse, Event, Size, Vector};
-use iced::{wgpu, Point};
+use iced::{mouse, Event, Point};
+
 use pipeline::Pipeline;
+use texture::SurfaceInner;
 use uniforms::UniformsRaw;
-
-/// Image data stored by the CPU
-pub trait Surface {
-    fn format(&self) -> wgpu::TextureFormat;
-    fn raw(&self) -> &[u8];
-    fn width(&self) -> u32;
-    fn height(&self) -> u32;
-    fn is_dirty(&self) -> bool;
-    fn reset_dirty(&self);
-}
-
-fn run_if_modified(surface: impl Surface, func: impl FnOnce(&[u8])) {
-    if surface.is_dirty() {
-        func(surface.raw());
-        surface.reset_dirty();
-    }
-}
-
-#[derive(Default, Clone)]
-pub struct State {
-    canvas_grab: Option<glam::Vec2>,
-    grabbing: bool,
-    canvas_offset: glam::Vec2,
-    zoom: f32,
-}
 
 // #[derive(Debug)]
 pub struct TextureCanvas<'a, Message> {
-    pub buffer: &'a texture::Pixmap,
+    pub buffer: &'a texture::Surface,
     pub controls: &'a Controls,
     pub on_drag: Option<Box<dyn Fn(Point) -> Message + 'a>>,
     pub on_zoom: Option<Box<dyn Fn(f32) -> Message + 'a>>,
 }
 
 impl<'a, Message> TextureCanvas<'a, Message> {
-    pub fn new(buffer: &'a texture::Pixmap, controls: &'a Controls) -> Self {
+    pub fn new(buffer: &'a texture::Surface, controls: &'a Controls) -> Self {
         Self {
             buffer,
             controls,
@@ -65,7 +45,7 @@ impl<'a, Message> shader::Program<Message> for TextureCanvas<'a, Message> {
     ) -> Self::Primitive {
         Self::Primitive::new(
             *self.controls,
-            self.buffer.clone(),
+            self.buffer,
             state.canvas_offset,
             state.zoom.clamp(1.0, 100.),
         )
@@ -138,10 +118,18 @@ impl<'a, Message> shader::Program<Message> for TextureCanvas<'a, Message> {
     }
 }
 
+#[derive(Default, Clone)]
+pub struct State {
+    canvas_grab: Option<glam::Vec2>,
+    grabbing: bool,
+    canvas_offset: glam::Vec2,
+    zoom: f32,
+}
+
 #[derive(Debug)]
 pub struct BitmapPrimatrive {
     controls: Controls,
-    pixmap: texture::Pixmap,
+    surface: Weak<SurfaceInner>,
     offset: glam::Vec2,
     zoom_override: f32,
 }
@@ -149,13 +137,13 @@ pub struct BitmapPrimatrive {
 impl BitmapPrimatrive {
     pub fn new(
         controls: Controls,
-        pixmap: texture::Pixmap,
+        pixmap: &texture::Surface,
         offset: glam::Vec2,
         zoom_override: f32,
     ) -> Self {
         Self {
             controls,
-            pixmap,
+            surface: pixmap.create_weak(),
             offset,
             zoom_override,
         }
@@ -187,42 +175,47 @@ impl shader::Primitive for BitmapPrimatrive {
         bounds: &iced::Rectangle,
         _viewport: &shader::Viewport,
     ) {
+        let Some(surface) = self.surface.upgrade() else {
+            return;
+        };
+
+        let mut just_created = false;
         if !storage.has::<Pipeline>() {
-            storage.store(Pipeline::new(device, format, &self.pixmap));
+            just_created = true;
+            storage.store(Pipeline::new(device, format, &surface));
         }
 
-        // TODO: recreate texture if texture size changed
         let pipeline = storage.get_mut::<Pipeline>().unwrap();
 
-        // let scale = self.controls.zoom;
         let scale = self.zoom_override;
         let size = pipeline.texture.size;
 
-        // TODO: only update if dirty
-        pipeline.update(
-            queue,
-            &self.pixmap,
-            UniformsRaw::new(
-                {
-                    let center = self.controls.center;
-                    let offset = self.offset;
+        let uniforms = UniformsRaw::new(
+            {
+                let center = self.controls.center;
+                let offset = self.offset;
 
-                    let center_x = center.x / 2.;
-                    let center_y = center.y / 2.;
+                let center_x = center.x / 2.;
+                let center_y = center.y / 2.;
 
-                    let tex_width = size.width as f32 / 2.0;
-                    let tex_height = size.height as f32 / 2.0;
+                let tex_width = size.width as f32 / 2.0;
+                let tex_height = size.height as f32 / 2.0;
 
-                    let canvas_x = (center_x - (tex_width * scale)).ceil() + offset.x * scale;
-                    let canvas_y = (center_y - (tex_height * scale)).ceil() + offset.y * scale;
+                let canvas_x = (center_x - (tex_width * scale)).ceil() + offset.x * scale;
+                let canvas_y = (center_y - (tex_height * scale)).ceil() + offset.y * scale;
 
-                    (canvas_x, canvas_y).into()
-                },
-                scale,
-                bounds.size(),
-                self.pixmap.size(),
-            ),
+                (canvas_x, canvas_y).into()
+            },
+            scale,
+            bounds.size(),
+            surface.size(),
         );
+
+        pipeline.uniform.upload(queue, uniforms);
+
+        surface.run_if_modified_or(just_created, |data| {
+            pipeline.texture.upload(queue, &data);
+        });
     }
 
     fn render(

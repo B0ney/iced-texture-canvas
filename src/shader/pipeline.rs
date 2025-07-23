@@ -1,20 +1,16 @@
 use iced::wgpu;
 
-use super::texture;
-use super::uniforms::{self, Uniform, UniformsRaw};
+use super::texture::{self, SurfaceInner};
+use super::uniforms::{self, Uniform};
 
-pub struct Pipeline {
+pub(crate) struct Pipeline {
     pipeline: wgpu::RenderPipeline,
-    uniform: uniforms::Uniform,
+    pub uniform: uniforms::Uniform,
     pub texture: texture::Texture,
 }
 
 impl Pipeline {
-    pub fn new(
-        device: &wgpu::Device,
-        format: wgpu::TextureFormat,
-        pixmap: &texture::Pixmap,
-    ) -> Self {
+    pub fn new(device: &wgpu::Device, format: wgpu::TextureFormat, pixmap: &SurfaceInner) -> Self {
         let shader = device.create_shader_module(wgpu::ShaderModuleDescriptor {
             label: Some("Pipeline shader"),
             ..wgpu::include_wgsl!("shader.wgsl")
@@ -63,11 +59,6 @@ impl Pipeline {
             uniform,
             texture,
         }
-    }
-
-    pub fn update(&mut self, queue: &wgpu::Queue, pixmap: &texture::Pixmap, uniforms: UniformsRaw) {
-        self.uniform.upload(queue, uniforms);
-        self.texture.upload(queue, pixmap);
     }
 
     pub fn render(
