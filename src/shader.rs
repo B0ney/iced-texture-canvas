@@ -50,6 +50,9 @@ pub trait Surface: Send + Sync + Debug + 'static {
     /// The height of the [`Surface`]
     fn height(&self) -> u32;
 
+    /// The image data of [`Surface`]
+    fn data(&self) -> &[u8];
+
     /// The size of the [`Surface`]
     fn size(&self) -> iced_core::Size {
         (self.width() as f32, self.height() as f32).into()
@@ -58,7 +61,7 @@ pub trait Surface: Send + Sync + Debug + 'static {
     /// Call the update closure if the [`Surface`] was modified, or if `other` is true.
     ///
     /// The data provided in update will be uploaded to the GPU.
-    fn run_if_modified_or(&self, other: bool, update: impl FnOnce(u32, u32, &[u8]));
+    fn run_if_modified(&self, update: impl FnOnce(u32, u32, &[u8]));
 }
 
 impl<T: Surface> Surface for Arc<T> {
@@ -70,8 +73,12 @@ impl<T: Surface> Surface for Arc<T> {
         Arc::as_ref(&self).height()
     }
 
-    fn run_if_modified_or(&self, other: bool, update: impl FnOnce(u32, u32, &[u8])) {
-        Arc::as_ref(&self).run_if_modified_or(other, update)
+    fn data(&self) -> &[u8] {
+        Arc::as_ref(&self).data()
+    }
+
+    fn run_if_modified(&self, update: impl FnOnce(u32, u32, &[u8])) {
+        Arc::as_ref(&self).run_if_modified(update)
     }
 }
 
@@ -291,7 +298,7 @@ impl<'a, Message, Surface: SurfaceHandler> shader::Program<Message>
                         // TODO: align the canvas to the mouse position when scaling.
                         // we calculate what % the cursor is from the canvas on both axes.
                         // 0% = far left, or top
-                        // 100% = far right, or bottm
+                        // 100% = far right, or bottom
                         //
                         // after scaling, we adjust the offset of the canvas to match this.
                         // println!("{}", y);
@@ -392,6 +399,7 @@ impl<Buffer: Surface> shader::Primitive for Primitive<Buffer> {
 
         if surface.width() != texture_size.width || surface.height() != texture_size.height {
             *pipeline = Pipeline::new(device, format, &surface);
+            just_created = true;
         }
 
         let scale = self.scale;
@@ -401,9 +409,15 @@ impl<Buffer: Surface> shader::Primitive for Primitive<Buffer> {
             UniformsRaw::new(self.offset, scale, bounds.size(), surface.size()),
         );
 
-        surface.run_if_modified_or(just_created, |width, height, buffer| {
-            pipeline.texture.upload(queue, width, height, buffer);
-        });
+        if just_created {
+            pipeline
+                .texture
+                .upload(queue, surface.width(), surface.height(), surface.data());
+        } else {
+            surface.run_if_modified(|width, height, buffer| {
+                pipeline.texture.upload(queue, width, height, buffer);
+            });
+        }
     }
 
     fn render(

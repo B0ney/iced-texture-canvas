@@ -94,12 +94,14 @@ impl super::Surface for SurfaceInner {
         self.height()
     }
 
-    fn run_if_modified_or(&self, other: bool, update: impl FnOnce(u32, u32, &[u8])) {
-        if other
-            || self
-                .dirty
+    fn data(&self) -> &[u8] {
+        self.raw()
+    }
+
+    fn run_if_modified(&self, update: impl FnOnce(u32, u32, &[u8])) {
+        if let Ok(true) =
+            self.dirty
                 .compare_exchange(true, false, Ordering::Relaxed, Ordering::Relaxed)
-                == Ok(true)
         {
             update(self.width, self.height, self.raw())
         }
