@@ -50,15 +50,14 @@ pub trait Surface: Send + Sync + Debug + 'static {
     /// The height of the [`Surface`]
     fn height(&self) -> u32;
 
-    /// The [`Surface`]'s raw data to be uploaded to the GPU
-    fn data(&self) -> &[u8];
-
     /// The size of the [`Surface`]
     fn size(&self) -> iced_core::Size {
         (self.width() as f32, self.height() as f32).into()
     }
 
     /// Call the update closure if the [`Surface`] was modified, or if `other` is true.
+    ///
+    /// The data provided in update will be uploaded to the GPU.
     fn run_if_modified_or(&self, other: bool, update: impl FnOnce(u32, u32, &[u8]));
 }
 
@@ -69,10 +68,6 @@ impl<T: Surface> Surface for Arc<T> {
 
     fn height(&self) -> u32 {
         Arc::as_ref(&self).height()
-    }
-
-    fn data(&self) -> &[u8] {
-        Arc::as_ref(&self).data()
     }
 
     fn run_if_modified_or(&self, other: bool, update: impl FnOnce(u32, u32, &[u8])) {

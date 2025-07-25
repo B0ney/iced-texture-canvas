@@ -94,10 +94,6 @@ impl super::Surface for SurfaceInner {
         self.height()
     }
 
-    fn data(&self) -> &[u8] {
-        self.raw()
-    }
-
     fn run_if_modified_or(&self, other: bool, update: impl FnOnce(u32, u32, &[u8])) {
         if other
             || self
