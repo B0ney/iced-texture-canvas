@@ -88,14 +88,14 @@ impl<'a, Message, Surface: SurfaceHandler> TextureCanvas<'a, Message, Surface> {
     }
 }
 
-impl<'a, Message, Theme, Renderer, Surface> From<TextureCanvas<'a, Message, Surface>>
+impl<'a, Message, Theme, Renderer, Handler> From<TextureCanvas<'a, Message, Handler>>
     for iced_core::Element<'a, Message, Theme, Renderer>
 where
     Message: 'a,
     Renderer: iced_wgpu::primitive::Renderer,
-    Surface: SurfaceHandler,
+    Handler: SurfaceHandler,
 {
-    fn from(value: TextureCanvas<'a, Message, Surface>) -> Self {
+    fn from(value: TextureCanvas<'a, Message, Handler>) -> Self {
         let width = value.width;
         let height = value.height;
         shader(value).width(width).height(height).into()
