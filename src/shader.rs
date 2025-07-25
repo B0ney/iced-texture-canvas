@@ -28,6 +28,9 @@ pub struct TextureCanvas<'a, Message> {
     height: Length,
     on_drag: Option<Box<dyn Fn(Point) -> Message + 'a>>,
     on_zoom: Option<Box<dyn Fn(f32) -> Message + 'a>>,
+    on_pressed: Option<Box<dyn Fn(Point) -> Message + 'a>>,
+    on_move: Option<Box<dyn Fn(Point) -> Message + 'a>>,
+    on_release: Option<Box<dyn Fn(Point) -> Message + 'a>>,
 }
 
 impl<'a, Message> TextureCanvas<'a, Message> {
@@ -39,6 +42,9 @@ impl<'a, Message> TextureCanvas<'a, Message> {
             on_zoom: None,
             width: Length::Fill,
             height: Length::Fill,
+            on_pressed: None,
+            on_move: None,
+            on_release: None,
         }
     }
 
@@ -61,6 +67,22 @@ impl<'a, Message> TextureCanvas<'a, Message> {
 
     pub fn on_zoom(mut self, on_zoom: impl Fn(f32) -> Message + 'a) -> Self {
         self.on_zoom = Some(Box::new(on_zoom));
+        self
+    }
+
+    // TODO include which button was pressed.
+    pub fn on_press(mut self, on_press: impl Fn(Point) -> Message + 'a) -> Self {
+        self.on_pressed = Some(Box::new(on_press));
+        self
+    }
+
+    pub fn on_move(mut self, on_move: impl Fn(Point) -> Message + 'a) -> Self {
+        self.on_move = Some(Box::new(on_move));
+        self
+    }
+
+    pub fn on_release(mut self, on_release: impl Fn(Point) -> Message + 'a) -> Self {
+        self.on_release = Some(Box::new(on_release));
         self
     }
 }
@@ -89,11 +111,23 @@ impl<'a, Message> shader::Program<Message> for TextureCanvas<'a, Message> {
         bounds: Rectangle,
     ) -> Self::Primitive {
         Self::Primitive::new(
-            *self.controls,
             self.buffer,
             state.canvas_offset,
             state.zoom.clamp(1.0, 100.),
         )
+    }
+
+    fn mouse_interaction(
+        &self,
+        _state: &Self::State,
+        _bounds: Rectangle,
+        _cursor: mouse::Cursor,
+    ) -> mouse::Interaction {
+        if _state.mouse_over_image {
+            mouse::Interaction::Crosshair
+        } else {
+            mouse::Interaction::None
+        }
     }
 
     fn update(
@@ -104,33 +138,89 @@ impl<'a, Message> shader::Program<Message> for TextureCanvas<'a, Message> {
         cursor: mouse::Cursor,
     ) -> Option<shader::Action<Message>> {
         if !cursor.is_over(bounds) {
+            state.reset();
             return None;
         }
-        let mut action = None;
-        // shader::Action::publish(message)
 
         if let mouse::Cursor::Available(mouse_pos) = cursor {
-            if state.grabbing {
-                let scale = state.zoom.clamp(1.0, 5.0);
-                match state.canvas_grab {
-                    Some(pos) => {
-                        state.canvas_offset = Vec2::new(mouse_pos.x, mouse_pos.y) / scale - pos;
-                        if let Some(on_click) = self.on_drag.as_ref() {
-                            todo!()
-                            // action = Some(shader::Action::publish(on_click()))
-                        } else {
-                            action = Some(shader::Action::request_redraw());
-                        }
-                    }
-                    None => {
-                        let position = Vec2::new(mouse_pos.x, mouse_pos.y);
-                        state.canvas_grab = Some(position / scale - state.canvas_offset);
-                        action = Some(shader::Action::request_redraw());
-                    }
-                }
+            let glam::Vec2 { x, y } = state.canvas_offset;
+
+            let canvas_bounds = Rectangle {
+                x,
+                y,
+                width: self.buffer.width() as f32 * state.zoom,
+                height: self.buffer.height() as f32 * state.zoom,
+            };
+
+            if canvas_bounds.contains(mouse_pos) {
+                state.mouse_over_image = true;
+            } else {
+                state.mouse_over_image = false;
+            }
+
+            fn to_canvas_coords(mouse: Point, offset: Vec2, scale: f32) -> Point {
+                let mouse = glam::vec2(mouse.x, mouse.y);
+                let Vec2 { x, y } = (mouse - offset) / scale;
+                Point { x, y }
             }
 
             match event {
+                Event::Mouse(mouse::Event::ButtonPressed(mouse::Button::Left)) => {
+                    state.mouse_down = true;
+
+                    if state.mouse_over_image {
+                        if let Some(on_press) = &self.on_pressed {
+                            return Some(shader::Action::publish(on_press(to_canvas_coords(
+                                mouse_pos,
+                                state.canvas_offset,
+                                state.zoom,
+                            ))));
+                        }
+                    }
+                }
+
+                Event::Mouse(mouse::Event::CursorMoved { position }) => {
+                    let mouse_pos = *position;
+
+                    if state.mouse_over_image && state.mouse_down {
+                        if let Some(on_move) = &self.on_move {
+                            return Some(shader::Action::publish(on_move(to_canvas_coords(
+                                mouse_pos,
+                                state.canvas_offset,
+                                state.zoom,
+                            ))));
+                        }
+                    }
+
+                    if state.grabbing {
+                        match state.canvas_grab {
+                            Some(pos) => {
+                                state.canvas_offset = Vec2::new(mouse_pos.x, mouse_pos.y) - pos
+                            }
+                            None => {
+                                let position = Vec2::new(mouse_pos.x, mouse_pos.y);
+                                state.canvas_grab = Some(position - state.canvas_offset);
+                            }
+                        }
+
+                        return Some(shader::Action::request_redraw());
+                    }
+                }
+
+                Event::Mouse(mouse::Event::ButtonReleased(mouse::Button::Left)) => {
+                    state.mouse_down = false;
+
+                    if state.mouse_over_image {
+                        if let Some(on_release) = &self.on_release {
+                            return Some(shader::Action::publish(on_release(to_canvas_coords(
+                                mouse_pos,
+                                state.canvas_offset,
+                                state.zoom,
+                            ))));
+                        }
+                    }
+                }
+
                 Event::Mouse(mouse::Event::ButtonPressed(mouse::Button::Middle)) => {
                     state.grabbing = true;
                 }
@@ -138,6 +228,7 @@ impl<'a, Message> shader::Program<Message> for TextureCanvas<'a, Message> {
                     state.grabbing = false;
                     state.canvas_grab = None;
                 }
+                // TODO
                 Event::Mouse(mouse::Event::WheelScrolled { delta }) => match delta {
                     mouse::ScrollDelta::Lines { x, y } => {
                         // TODO: align the canvas to the mouse position when scaling.
@@ -148,18 +239,22 @@ impl<'a, Message> shader::Program<Message> for TextureCanvas<'a, Message> {
                         // after scaling, we adjust the offset of the canvas to match this.
                         // println!("{}", y);
                         state.zoom = (state.zoom + y).clamp(1.0, 5.0);
-                        action = Some(shader::Action::request_redraw());
-                        state.canvas_offset = Vec2::new(mouse_pos.x, mouse_pos.y) / state.zoom;
+                        state.canvas_offset = Vec2::new(mouse_pos.x, mouse_pos.y);
+
+                        return Some(shader::Action::request_redraw());
                     }
+
                     mouse::ScrollDelta::Pixels { y, .. } => {
                         println!("h;");
                     }
                 },
                 _ => (),
             }
+        } else {
+            state.reset();
         };
 
-        action
+        None
     }
 }
 
@@ -169,28 +264,32 @@ pub struct State {
     grabbing: bool,
     canvas_offset: glam::Vec2,
     zoom: f32,
+    mouse_over_image: bool,
+    mouse_down: bool,
+}
+
+impl State {
+    pub fn reset(&mut self) {
+        self.mouse_over_image = false;
+        self.grabbing = false;
+        self.canvas_grab = None;
+        self.mouse_down = false;
+    }
 }
 
 #[derive(Debug)]
 pub struct Primitive {
-    controls: Controls,
     surface: Weak<SurfaceInner>,
     offset: glam::Vec2,
-    zoom_override: f32,
+    scale: f32,
 }
 
 impl Primitive {
-    pub fn new(
-        controls: Controls,
-        pixmap: &handle::Surface,
-        offset: glam::Vec2,
-        zoom_override: f32,
-    ) -> Self {
+    pub fn new(pixmap: &handle::Surface, offset: glam::Vec2, scale: f32) -> Self {
         Self {
-            controls,
             surface: pixmap.create_weak(),
             offset,
-            zoom_override,
+            scale,
         }
     }
 }
@@ -238,32 +337,12 @@ impl shader::Primitive for Primitive {
             *pipeline = Pipeline::new(device, format, &surface);
         }
 
-        let scale = self.zoom_override;
-        // TODO: recreate texture if sizes differ
-        let size = pipeline.texture.size;
+        let scale = self.scale;
 
-        let uniforms = UniformsRaw::new(
-            {
-                let center = self.controls.center;
-                let offset = self.offset;
-
-                let center_x = center.x / 2.;
-                let center_y = center.y / 2.;
-
-                let tex_width = size.width as f32 / 2.0;
-                let tex_height = size.height as f32 / 2.0;
-
-                let canvas_x = (center_x - (tex_width * scale)).ceil() + offset.x * scale;
-                let canvas_y = (center_y - (tex_height * scale)).ceil() + offset.y * scale;
-
-                (canvas_x, canvas_y).into()
-            },
-            scale,
-            bounds.size(),
-            surface.size(),
+        pipeline.uniform.upload(
+            queue,
+            UniformsRaw::new(self.offset, scale, bounds.size(), surface.size()),
         );
-
-        pipeline.uniform.upload(queue, uniforms);
 
         surface.run_if_modified_or(just_created, |data| {
             pipeline.texture.upload(queue, &data);
