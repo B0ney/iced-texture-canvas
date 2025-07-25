@@ -1,7 +1,5 @@
 use iced_wgpu::wgpu;
 
-use super::handle::PixmapRef;
-
 pub struct Texture {
     pub texture: wgpu::Texture,
     pub size: wgpu::Extent3d,
@@ -88,14 +86,14 @@ impl Texture {
         }
     }
 
-    pub fn upload(&mut self, queue: &wgpu::Queue, pixmap: &PixmapRef) {
+    pub fn upload(&mut self, queue: &wgpu::Queue, width: u32, height: u32, data: &[u8]) {
         queue.write_texture(
             self.texture.as_image_copy(),
-            bytemuck::cast_slice(&pixmap.buffer),
+            data,
             wgpu::TexelCopyBufferLayout {
                 offset: 0,
-                bytes_per_row: Some(4 * pixmap.width),
-                rows_per_image: Some(pixmap.height),
+                bytes_per_row: Some(4 * width),
+                rows_per_image: Some(height),
             },
             self.size,
         );

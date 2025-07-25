@@ -1,7 +1,8 @@
 use iced_core::Rectangle;
 use iced_wgpu::wgpu;
 
-use super::handle::SurfaceInner;
+use crate::shader::Surface;
+
 use super::texture::{self};
 use super::uniforms::{self, Uniform};
 
@@ -12,7 +13,11 @@ pub(crate) struct Pipeline {
 }
 
 impl Pipeline {
-    pub fn new(device: &wgpu::Device, format: wgpu::TextureFormat, pixmap: &SurfaceInner) -> Self {
+    pub fn new<Buffer: Surface>(
+        device: &wgpu::Device,
+        format: wgpu::TextureFormat,
+        pixmap: &Buffer,
+    ) -> Self {
         let shader = device.create_shader_module(wgpu::ShaderModuleDescriptor {
             label: Some("Pipeline shader"),
             ..wgpu::include_wgsl!("shader.wgsl")

@@ -4,26 +4,85 @@ pub mod texture;
 pub mod uniforms;
 
 use glam::Vec2;
-use std::sync::Weak;
+use std::fmt::Debug;
+use std::sync::{Arc, Weak};
 
 use iced_core::{Event, Length, Point, Rectangle, mouse};
 use iced_wgpu::wgpu;
 use iced_widget::shader;
 
-use handle::SurfaceInner;
 use pipeline::Pipeline;
 use uniforms::UniformsRaw;
 
-pub fn texture<'a, Message: 'a>(
-    buffer: &'a handle::Surface,
+pub fn texture<'a, Message: 'a, Handler: SurfaceHandler>(
+    buffer: &'a Handler,
     controls: &'a Controls,
-) -> TextureCanvas<'a, Message> {
+) -> TextureCanvas<'a, Message, Handler> {
     TextureCanvas::new(buffer, controls)
 }
 
-pub struct TextureCanvas<'a, Message> {
-    buffer: &'a handle::Surface,
-    controls: &'a Controls,
+/// A type that can provide information about the [`Surface`],
+/// and create a weak reference to be used by the iced shader program.
+pub trait SurfaceHandler {
+    type Surface: Surface;
+
+    /// The width of the [`Surface`]
+    fn width(&self) -> u32;
+
+    /// The height of the [`Surface`]
+    fn height(&self) -> u32;
+
+    /// Create a Weak reference to the [`Surface`].
+    ///
+    /// The program will then attempt to convert it to a strong reference
+    /// at the prepare stage of the pipeline.
+    ///
+    /// A Weak reference grants users the freedom to modify their [`Surface`]
+    /// without resorting to locks thanks to Arc::make_mut.
+    fn create_weak(&self) -> Weak<Self::Surface>;
+}
+
+/// RGBA image data stored on the CPU.
+pub trait Surface: Send + Sync + Debug + 'static {
+    /// The width of the [`Surface`]
+    fn width(&self) -> u32;
+
+    /// The height of the [`Surface`]
+    fn height(&self) -> u32;
+
+    /// The [`Surface`]'s raw data to be uploaded to the GPU
+    fn data(&self) -> &[u8];
+
+    /// The size of the [`Surface`]
+    fn size(&self) -> iced_core::Size {
+        (self.width() as f32, self.height() as f32).into()
+    }
+
+    /// Call the update closure if the [`Surface`] was modified, or if `other` is true.
+    fn run_if_modified_or(&self, other: bool, update: impl FnOnce(u32, u32, &[u8]));
+}
+
+impl<T: Surface> Surface for Arc<T> {
+    fn width(&self) -> u32 {
+        Arc::as_ref(&self).width()
+    }
+
+    fn height(&self) -> u32 {
+        Arc::as_ref(&self).height()
+    }
+
+    fn data(&self) -> &[u8] {
+        Arc::as_ref(&self).data()
+    }
+
+    fn run_if_modified_or(&self, other: bool, update: impl FnOnce(u32, u32, &[u8])) {
+        Arc::as_ref(&self).run_if_modified_or(other, update)
+    }
+}
+
+pub struct TextureCanvas<'a, Message, SurfaceHandler> {
+    buffer: &'a SurfaceHandler,
+    controls: &'a Controls, // TODO
     width: Length,
     height: Length,
     on_drag: Option<Box<dyn Fn(Point) -> Message + 'a>>,
@@ -33,8 +92,8 @@ pub struct TextureCanvas<'a, Message> {
     on_release: Option<Box<dyn Fn(Point) -> Message + 'a>>,
 }
 
-impl<'a, Message> TextureCanvas<'a, Message> {
-    pub fn new(buffer: &'a handle::Surface, controls: &'a Controls) -> Self {
+impl<'a, Message, Surface: SurfaceHandler> TextureCanvas<'a, Message, Surface> {
+    pub fn new(buffer: &'a Surface, controls: &'a Controls) -> Self {
         Self {
             buffer,
             controls,
@@ -87,22 +146,25 @@ impl<'a, Message> TextureCanvas<'a, Message> {
     }
 }
 
-impl<'a, Message, Theme, Renderer> From<TextureCanvas<'a, Message>>
+impl<'a, Message, Theme, Renderer, Surface> From<TextureCanvas<'a, Message, Surface>>
     for iced_core::Element<'a, Message, Theme, Renderer>
 where
     Message: 'a,
     Renderer: iced_wgpu::primitive::Renderer,
+    Surface: SurfaceHandler,
 {
-    fn from(value: TextureCanvas<'a, Message>) -> Self {
+    fn from(value: TextureCanvas<'a, Message, Surface>) -> Self {
         let width = value.width;
         let height = value.height;
         shader(value).width(width).height(height).into()
     }
 }
 
-impl<'a, Message> shader::Program<Message> for TextureCanvas<'a, Message> {
+impl<'a, Message, Surface: SurfaceHandler> shader::Program<Message>
+    for TextureCanvas<'a, Message, Surface>
+{
     type State = State;
-    type Primitive = Primitive;
+    type Primitive = Primitive<Surface::Surface>;
 
     fn draw(
         &self,
@@ -111,7 +173,7 @@ impl<'a, Message> shader::Program<Message> for TextureCanvas<'a, Message> {
         bounds: Rectangle,
     ) -> Self::Primitive {
         Self::Primitive::new(
-            self.buffer,
+            self.buffer.create_weak(),
             state.canvas_offset,
             state.zoom.clamp(1.0, 100.),
         )
@@ -278,16 +340,16 @@ impl State {
 }
 
 #[derive(Debug)]
-pub struct Primitive {
-    surface: Weak<SurfaceInner>,
+pub struct Primitive<Buffer: Surface> {
+    surface: Weak<Buffer>,
     offset: glam::Vec2,
     scale: f32,
 }
 
-impl Primitive {
-    pub fn new(pixmap: &handle::Surface, offset: glam::Vec2, scale: f32) -> Self {
+impl<Buffer: Surface> Primitive<Buffer> {
+    pub fn new(pixmap: Weak<Buffer>, offset: glam::Vec2, scale: f32) -> Self {
         Self {
-            surface: pixmap.create_weak(),
+            surface: pixmap,
             offset,
             scale,
         }
@@ -309,7 +371,7 @@ impl Default for Controls {
     }
 }
 
-impl shader::Primitive for Primitive {
+impl<Buffer: Surface> shader::Primitive for Primitive<Buffer> {
     fn prepare(
         &self,
         device: &wgpu::Device,
@@ -344,8 +406,8 @@ impl shader::Primitive for Primitive {
             UniformsRaw::new(self.offset, scale, bounds.size(), surface.size()),
         );
 
-        surface.run_if_modified_or(just_created, |data| {
-            pipeline.texture.upload(queue, &data);
+        surface.run_if_modified_or(just_created, |width, height, buffer| {
+            pipeline.texture.upload(queue, width, height, buffer);
         });
     }
 

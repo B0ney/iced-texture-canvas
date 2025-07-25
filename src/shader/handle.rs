@@ -3,6 +3,8 @@ use std::sync::{Arc, Weak};
 
 use iced_core::Size;
 
+use crate::shader::SurfaceHandler;
+
 pub struct Surface(pub(crate) Arc<SurfaceInner>);
 
 impl Surface {
@@ -49,24 +51,24 @@ impl Surface {
         (self.width() as f32, self.height() as f32).into()
     }
 
-    pub fn pixmap_ref(&self) -> PixmapRef {
-        PixmapRef {
-            buffer: self.buffer(),
-            width: self.width(),
-            height: self.height(),
-        }
-    }
-
-    pub fn pixmap_mut(&mut self) -> PixmapMut {
-        PixmapMut {
-            width: self.width(),
-            height: self.height(),
-            buffer: self.buffer_mut(),
-        }
-    }
-
     pub(crate) fn create_weak(&self) -> Weak<SurfaceInner> {
         Arc::downgrade(&self.0)
+    }
+}
+
+impl SurfaceHandler for Surface {
+    type Surface = SurfaceInner;
+
+    fn width(&self) -> u32 {
+        self.width()
+    }
+
+    fn height(&self) -> u32 {
+        self.height()
+    }
+
+    fn create_weak(&self) -> Weak<Self::Surface> {
+        self.create_weak()
     }
 }
 
@@ -76,11 +78,36 @@ impl Clone for Surface {
     }
 }
 
-pub(crate) struct SurfaceInner {
+pub struct SurfaceInner {
     buffer: Vec<u32>,
     width: u32,
     height: u32,
     dirty: AtomicBool,
+}
+
+impl super::Surface for SurfaceInner {
+    fn width(&self) -> u32 {
+        self.width()
+    }
+
+    fn height(&self) -> u32 {
+        self.height()
+    }
+
+    fn data(&self) -> &[u8] {
+        self.raw()
+    }
+
+    fn run_if_modified_or(&self, other: bool, update: impl FnOnce(u32, u32, &[u8])) {
+        if other
+            || self
+                .dirty
+                .compare_exchange(true, false, Ordering::Relaxed, Ordering::Relaxed)
+                == Ok(true)
+        {
+            update(self.width, self.height, self.raw())
+        }
+    }
 }
 
 impl SurfaceInner {
@@ -99,21 +126,6 @@ impl SurfaceInner {
 
     pub fn buffer(&self) -> &[u32] {
         &self.buffer
-    }
-
-    pub fn run_if_modified_or(&self, other: bool, update: impl FnOnce(PixmapRef)) {
-        if other
-            || self
-                .dirty
-                .compare_exchange(true, false, Ordering::Relaxed, Ordering::Relaxed)
-                == Ok(true)
-        {
-            update(PixmapRef {
-                buffer: &self.buffer,
-                width: self.width,
-                height: self.height,
-            })
-        }
     }
 
     pub fn width(&self) -> u32 {
@@ -148,17 +160,4 @@ impl std::fmt::Debug for SurfaceInner {
             .field("height", &self.height)
             .finish()
     }
-}
-
-#[derive(Clone, Copy)]
-pub struct PixmapRef<'a> {
-    pub buffer: &'a [u32],
-    pub width: u32,
-    pub height: u32,
-}
-
-pub struct PixmapMut<'a> {
-    pub buffer: &'a mut [u32],
-    pub width: u32,
-    pub height: u32,
 }
