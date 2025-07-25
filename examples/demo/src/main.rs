@@ -1,7 +1,7 @@
-use iced::widget::{button, column, horizontal_rule, stack};
+use iced::widget::{button, column, horizontal_rule};
 use iced::{Color, Element, Length, Point};
 
-use iced_texture::{Controls, Surface, texture};
+use iced_texture::{Controls, texture};
 
 fn main() -> iced::Result {
     iced::application(ShaderApp::default, ShaderApp::update, ShaderApp::view).run()
@@ -15,7 +15,7 @@ enum Message {
 }
 
 struct ShaderApp {
-    pixmap: iced_texture::handle::Surface,
+    pixmap: iced_texture::bitmap::Bitmap,
     controls: Controls,
     color: Color,
     offset: Point<f32>,
@@ -23,7 +23,7 @@ struct ShaderApp {
 
 impl Default for ShaderApp {
     fn default() -> Self {
-        let mut bitmap = iced_texture::handle::Surface::new(256, 192);
+        let mut bitmap = iced_texture::bitmap(256, 192);
         bitmap.update(include_bytes!("out.rgba").as_slice());
 
         Self {

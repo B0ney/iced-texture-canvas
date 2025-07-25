@@ -1,4 +1,3 @@
-pub mod handle;
 pub mod pipeline;
 pub mod texture;
 pub mod uniforms;

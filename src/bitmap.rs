@@ -1,13 +1,18 @@
+//! Concrete implementation of the [`SurfaceHandler`] (and Surface) in the form of a [`Bitmap`]
+use crate::shader::SurfaceHandler;
+
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Arc, Weak};
 
 use iced_core::Size;
 
-use crate::shader::SurfaceHandler;
+pub fn bitmap(width: u32, height: u32) -> Bitmap {
+    Bitmap::new(width, height)
+}
 
-pub struct Surface(pub(crate) Arc<SurfaceInner>);
+pub struct Bitmap(pub(crate) Arc<SurfaceInner>);
 
-impl Surface {
+impl Bitmap {
     pub fn new(width: u32, height: u32) -> Self {
         let buffer = vec![0; width as usize * height as usize];
 
@@ -56,7 +61,7 @@ impl Surface {
     }
 }
 
-impl SurfaceHandler for Surface {
+impl SurfaceHandler for Bitmap {
     type Surface = SurfaceInner;
 
     fn width(&self) -> u32 {
@@ -72,7 +77,7 @@ impl SurfaceHandler for Surface {
     }
 }
 
-impl Clone for Surface {
+impl Clone for Bitmap {
     fn clone(&self) -> Self {
         Self(Arc::new(SurfaceInner::clone(&self.0)))
     }
