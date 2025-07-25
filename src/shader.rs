@@ -209,8 +209,8 @@ impl<'a, Message, Surface: SurfaceHandler> shader::Program<Message>
             let glam::Vec2 { x, y } = state.canvas_offset;
 
             let canvas_bounds = Rectangle {
-                x,
-                y,
+                x: x + bounds.x,
+                y: y + bounds.y,
                 width: self.buffer.width() as f32 * state.zoom,
                 height: self.buffer.height() as f32 * state.zoom,
             };
@@ -221,9 +221,16 @@ impl<'a, Message, Surface: SurfaceHandler> shader::Program<Message>
                 state.mouse_over_image = false;
             }
 
-            fn to_canvas_coords(mouse: Point, offset: Vec2, scale: f32) -> Point {
+            fn to_canvas_coords(
+                bounds: Rectangle,
+                mouse: Point,
+                offset: Vec2,
+                scale: f32,
+            ) -> Point {
                 let mouse = glam::vec2(mouse.x, mouse.y);
-                let Vec2 { x, y } = (mouse - offset) / scale;
+                let bounds_offset = glam::vec2(bounds.x, bounds.y) / scale;
+                let Vec2 { x, y } = (mouse - offset) / scale - bounds_offset;
+
                 Point { x, y }
             }
 
@@ -234,6 +241,7 @@ impl<'a, Message, Surface: SurfaceHandler> shader::Program<Message>
                     if state.mouse_over_image {
                         if let Some(on_press) = &self.on_pressed {
                             return Some(shader::Action::publish(on_press(to_canvas_coords(
+                                bounds,
                                 mouse_pos,
                                 state.canvas_offset,
                                 state.zoom,
@@ -248,6 +256,7 @@ impl<'a, Message, Surface: SurfaceHandler> shader::Program<Message>
                     if state.mouse_over_image && state.mouse_down {
                         if let Some(on_move) = &self.on_move {
                             return Some(shader::Action::publish(on_move(to_canvas_coords(
+                                bounds,
                                 mouse_pos,
                                 state.canvas_offset,
                                 state.zoom,
@@ -276,6 +285,7 @@ impl<'a, Message, Surface: SurfaceHandler> shader::Program<Message>
                     if state.mouse_over_image {
                         if let Some(on_release) = &self.on_release {
                             return Some(shader::Action::publish(on_release(to_canvas_coords(
+                                bounds,
                                 mouse_pos,
                                 state.canvas_offset,
                                 state.zoom,
@@ -302,7 +312,8 @@ impl<'a, Message, Surface: SurfaceHandler> shader::Program<Message>
                         // after scaling, we adjust the offset of the canvas to match this.
                         // println!("{}", y);
                         state.zoom = (state.zoom + y).clamp(1.0, 5.0);
-                        state.canvas_offset = Vec2::new(mouse_pos.x, mouse_pos.y);
+                        state.canvas_offset =
+                            Vec2::new(mouse_pos.x - bounds.x, mouse_pos.y - bounds.y);
 
                         return Some(shader::Action::request_redraw());
                     }

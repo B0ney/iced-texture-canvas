@@ -1,5 +1,6 @@
-use iced::widget::{button, column, horizontal_rule};
-use iced::{Color, Element, Length, Point};
+use iced::alignment::Horizontal;
+use iced::widget::{button, column, container, horizontal_rule};
+use iced::{Alignment, Border, Color, Element, Length, Point};
 
 use iced_texture::{Controls, texture};
 
@@ -10,14 +11,19 @@ fn main() -> iced::Result {
 #[derive(Debug, Clone)]
 enum Message {
     Scale(f32),
-    PutPixel,
-    PutPixelWhite,
+    White,
+    Black,
+    PutPixel(Point),
 }
+
+const WHITE: u32 = 0xffffffff;
+const BLACK: u32 = 0xff000000;
 
 struct ShaderApp {
     pixmap: iced_texture::bitmap::Bitmap,
     controls: Controls,
-    color: Color,
+    color: u32,
+    size: u8,
     offset: Point<f32>,
 }
 
@@ -28,12 +34,13 @@ impl Default for ShaderApp {
 
         Self {
             pixmap: bitmap,
-            color: Color::WHITE,
+            color: WHITE,
             offset: Point::ORIGIN,
             controls: Controls {
                 scale: 1.0,
                 center: Default::default(),
             },
+            size: 10,
         }
     }
 }
@@ -41,40 +48,66 @@ impl Default for ShaderApp {
 impl ShaderApp {
     fn update(&mut self, msg: Message) {
         match msg {
-            Message::PutPixelWhite => {
+            Message::White => {
+                self.color = WHITE;
+            }
+
+            Message::Black => {
+                self.color = BLACK;
+            }
+
+            Message::Scale(_) => todo!(),
+
+            Message::PutPixel(point) => {
                 let width = self.pixmap.width() as usize;
+                let height = self.pixmap.height() as usize;
+
                 let buffer = self.pixmap.buffer_mut();
+
+                let px = point.x.round() as usize;
+                let py = point.y.round() as usize;
+
                 for x in 0..10 {
                     for y in 0..10 {
-                        buffer[y * width + x] = 0xffffff;
+                        let x = px + x;
+                        let y = py + y;
+
+                        if x >= width || y >= height {
+                            continue;
+                        }
+
+                        buffer[y * width + x] = self.color;
                     }
                 }
             }
-            Message::PutPixel => {
-                let width = self.pixmap.width() as usize;
-                let buffer = self.pixmap.buffer_mut();
-                for x in 0..10 {
-                    for y in 0..10 {
-                        buffer[y * width + x] = 0;
-                    }
-                }
-            }
-            _ => (),
         };
     }
 
     fn view(&self) -> Element<Message> {
         column![
-            texture(&self.pixmap, &self.controls)
-                .width(Length::Fill)
-                .height(Length::Fixed(512.0)),
-            // slider(0.0..=1.0, self.color.r, Message::R).step(0.01),
-            // slider(0.0..=1.0, self.color.g, Message::G).step(0.01),
-            // slider(0.0..=1.0, self.color.b, Message::B).step(0.01),
+            container(
+                texture(&self.pixmap, &self.controls)
+                    .width(512)
+                    .height(Length::Fixed(512.0))
+                    .on_release(Message::PutPixel)
+                    .on_move(Message::PutPixel),
+            )
+            .style(|_| container::Style {
+                text_color: None,
+                background: None,
+                border: Border {
+                    color: Color::BLACK,
+                    width: 2.0,
+                    radius: 0.0.into()
+                },
+                shadow: Default::default(),
+                snap: false
+            }),
             horizontal_rule(1.0),
-            button("Black Square").on_press(Message::PutPixel),
-            button("White Square").on_press(Message::PutPixelWhite),
+            button("Black Square").on_press(Message::Black),
+            button("White Square").on_press(Message::White),
         ]
+        .align_x(Horizontal::Center)
         .into()
     }
 }
