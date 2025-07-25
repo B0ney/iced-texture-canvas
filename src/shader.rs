@@ -304,16 +304,35 @@ impl<'a, Message, Surface: SurfaceHandler> shader::Program<Message>
                 // TODO
                 Event::Mouse(mouse::Event::WheelScrolled { delta }) => match delta {
                     mouse::ScrollDelta::Lines { x, y } => {
-                        // TODO: align the canvas to the mouse position when scaling.
-                        // we calculate what % the cursor is from the canvas on both axes.
+                        // align the canvas to the mouse position when scaling.
+                        // first we calculate what % the cursor is from the canvas on both axes.
                         // 0% = far left, or top
                         // 100% = far right, or bottom
                         //
-                        // after scaling, we adjust the offset of the canvas to match this.
-                        // println!("{}", y);
-                        state.zoom = (state.zoom + y).clamp(1.0, 5.0);
-                        state.canvas_offset =
-                            Vec2::new(mouse_pos.x - bounds.x, mouse_pos.y - bounds.y);
+                        // then after scaling, we adjust the offset of the canvas to match this.
+
+                        // calculate the % the cursor is from the canvas.
+                        let point =
+                            to_canvas_coords(bounds, mouse_pos, state.canvas_offset, state.zoom);
+
+                        let x_percent = (point.x / canvas_bounds.width) * state.zoom;
+                        let y_percent = (point.y / canvas_bounds.height) * state.zoom;
+
+                        state.zoom = (state.zoom + y).clamp(1.0, 10.);
+
+                        // recalculate the bounds of the canvas
+                        let new_canvas_bounds = Rectangle {
+                            x: x + bounds.x,
+                            y: y + bounds.y,
+                            width: self.buffer.width() as f32 * state.zoom,
+                            height: self.buffer.height() as f32 * state.zoom,
+                        };
+
+                        // move the canvas offset to satisfy the percentages.
+                        state.canvas_offset = Vec2::new(
+                            (mouse_pos.x - new_canvas_bounds.width * x_percent) - bounds.x,
+                            (mouse_pos.y - new_canvas_bounds.height * y_percent) - bounds.y,
+                        );
 
                         return Some(shader::Action::request_redraw());
                     }
@@ -332,7 +351,7 @@ impl<'a, Message, Surface: SurfaceHandler> shader::Program<Message>
     }
 }
 
-#[derive(Default, Clone)]
+#[derive(Clone)]
 pub struct State {
     canvas_grab: Option<glam::Vec2>,
     grabbing: bool,
@@ -340,6 +359,18 @@ pub struct State {
     zoom: f32,
     mouse_over_image: bool,
     mouse_down: bool,
+}
+impl Default for State {
+    fn default() -> Self {
+        Self {
+            canvas_grab: Default::default(),
+            grabbing: Default::default(),
+            canvas_offset: Default::default(),
+            zoom: 1.0,
+            mouse_over_image: Default::default(),
+            mouse_down: Default::default(),
+        }
+    }
 }
 
 impl State {
