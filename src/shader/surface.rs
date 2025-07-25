@@ -38,7 +38,7 @@ pub trait Surface: Send + Sync + Debug + 'static {
         (self.width() as f32, self.height() as f32).into()
     }
 
-    /// Call the update closure if the [`Surface`] was modified, or if `other` is true.
+    /// Call the update closure if the [`Surface`] was modified.
     ///
     /// The data provided in update will be uploaded to the GPU.
     fn run_if_modified(&self, update: impl FnOnce(u32, u32, &[u8]));
