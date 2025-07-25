@@ -102,11 +102,11 @@ where
     }
 }
 
-impl<'a, Message, Surface: SurfaceHandler> shader::Program<Message>
-    for TextureCanvas<'a, Message, Surface>
+impl<'a, Message, Handler: SurfaceHandler> shader::Program<Message>
+    for TextureCanvas<'a, Message, Handler>
 {
     type State = State;
-    type Primitive = Primitive<Surface::Surface>;
+    type Primitive = Primitive<Handler::Surface>;
 
     fn draw(
         &self,
