@@ -34,8 +34,8 @@ pub struct TextureCanvas<'a, Message, SurfaceHandler> {
     on_release: Option<Box<dyn Fn(Point) -> Message + 'a>>,
 }
 
-impl<'a, Message, Surface: SurfaceHandler> TextureCanvas<'a, Message, Surface> {
-    pub fn new(buffer: &'a Surface, controls: &'a Controls) -> Self {
+impl<'a, Message, Handler: SurfaceHandler> TextureCanvas<'a, Message, Handler> {
+    pub fn new(buffer: &'a Handler, controls: &'a Controls) -> Self {
         Self {
             buffer,
             controls,
