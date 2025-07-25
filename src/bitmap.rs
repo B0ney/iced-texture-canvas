@@ -1,6 +1,7 @@
 //! Concrete implementation of the [`SurfaceHandler`] (and Surface) in the form of a [`Bitmap`]
 use crate::shader::surface::SurfaceHandler;
 
+use std::num::NonZeroU32;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Arc, Weak};
 
@@ -18,10 +19,22 @@ impl Bitmap {
 
         Self(Arc::new(SurfaceInner {
             buffer,
-            width,
-            height,
+            width: NonZeroU32::new(width).expect("width must be greater than 0"),
+            height: NonZeroU32::new(height).expect("height must be greater than 0"),
             dirty: AtomicBool::new(false),
         }))
+    }
+
+    pub fn resize(&mut self, width: u32, height: u32) {
+        if width == self.width() && height == self.height() {
+            return;
+        }
+
+        let this = Arc::make_mut(&mut self.0);
+
+        this.buffer.resize(width as usize * height as usize, 0);
+        this.width = NonZeroU32::new(width).expect("width must be greater than 0");
+        this.height = NonZeroU32::new(height).expect("height must be greater than 0");
     }
 
     pub fn raw(&self) -> &[u8] {
@@ -33,11 +46,11 @@ impl Bitmap {
     }
 
     pub fn width(&self) -> u32 {
-        self.0.width
+        self.0.width.get()
     }
 
     pub fn height(&self) -> u32 {
-        self.0.height
+        self.0.height.get()
     }
 
     pub fn raw_mut(&mut self) -> &mut [u8] {
@@ -85,8 +98,8 @@ impl Clone for Bitmap {
 
 pub struct SurfaceInner {
     buffer: Vec<u32>,
-    width: u32,
-    height: u32,
+    width: NonZeroU32,
+    height: NonZeroU32,
     dirty: AtomicBool,
 }
 
@@ -108,7 +121,7 @@ impl super::Surface for SurfaceInner {
             self.dirty
                 .compare_exchange(true, false, Ordering::Relaxed, Ordering::Relaxed)
         {
-            update(self.width, self.height, self.raw())
+            update(self.width(), self.height(), self.raw())
         }
     }
 }
@@ -132,15 +145,15 @@ impl SurfaceInner {
     }
 
     pub fn width(&self) -> u32 {
-        self.width
+        self.width.get()
     }
 
     pub fn height(&self) -> u32 {
-        self.height
+        self.height.get()
     }
 
     pub fn size(&self) -> Size {
-        (self.width as f32, self.height as f32).into()
+        (self.width() as f32, self.height() as f32).into()
     }
 }
 
