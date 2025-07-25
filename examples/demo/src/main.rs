@@ -15,7 +15,7 @@ enum Message {
 }
 
 struct ShaderApp {
-    pixmap: Surface,
+    pixmap: iced_texture::handle::Surface,
     controls: Controls,
     color: Color,
     offset: Point<f32>,
@@ -23,7 +23,7 @@ struct ShaderApp {
 
 impl Default for ShaderApp {
     fn default() -> Self {
-        let mut bitmap = Surface::new(256, 192);
+        let mut bitmap = iced_texture::handle::Surface::new(256, 192);
         bitmap.update(include_bytes!("out.rgba").as_slice());
 
         Self {
