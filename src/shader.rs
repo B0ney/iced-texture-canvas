@@ -253,6 +253,8 @@ impl<'a, Message: Clone, Handler: SurfaceHandler> shader::Program<Message>
                             state.canvas_offset,
                             state.zoom,
                         ))));
+                    } else if state.grabbing {
+                        return Some(shader::Action::request_redraw());
                     }
                 }
 
