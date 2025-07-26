@@ -159,11 +159,7 @@ impl<'a, Message, Handler: SurfaceHandler> shader::Program<Message>
                 height: self.buffer.height() as f32 * state.zoom,
             };
 
-            if canvas_bounds.contains(mouse_pos) {
-                state.mouse_over_image = true;
-            } else {
-                state.mouse_over_image = false;
-            }
+            state.mouse_over_image = canvas_bounds.contains(mouse_pos);
 
             fn to_canvas_coords(
                 bounds: Rectangle,
@@ -298,6 +294,7 @@ impl<'a, Message, Handler: SurfaceHandler> shader::Program<Message>
     }
 }
 
+/// TODO: move canvas offset and zoom to user state
 #[derive(Clone)]
 pub struct State {
     canvas_grab: Option<glam::Vec2>,
