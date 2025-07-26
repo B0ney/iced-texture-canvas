@@ -29,9 +29,9 @@ pub struct TextureCanvas<'a, Message, SurfaceHandler> {
     height: Length,
     on_drag: Option<Box<dyn Fn(Point) -> Message + 'a>>,
     on_zoom: Option<Box<dyn Fn(f32) -> Message + 'a>>,
-    on_pressed: Option<Box<dyn Fn(Point) -> Message + 'a>>,
+    on_pressed: Option<Box<dyn Fn(Point, mouse::Button) -> Message + 'a>>,
     on_move: Option<Box<dyn Fn(Point) -> Message + 'a>>,
-    on_release: Option<Box<dyn Fn(Point) -> Message + 'a>>,
+    on_release: Option<Box<dyn Fn(Point, mouse::Button) -> Message + 'a>>,
 }
 
 impl<'a, Message, Handler: SurfaceHandler> TextureCanvas<'a, Message, Handler> {
@@ -72,7 +72,7 @@ impl<'a, Message, Handler: SurfaceHandler> TextureCanvas<'a, Message, Handler> {
     }
 
     // TODO include which button was pressed.
-    pub fn on_press(mut self, on_press: impl Fn(Point) -> Message + 'a) -> Self {
+    pub fn on_press(mut self, on_press: impl Fn(Point, mouse::Button) -> Message + 'a) -> Self {
         self.on_pressed = Some(Box::new(on_press));
         self
     }
@@ -82,7 +82,7 @@ impl<'a, Message, Handler: SurfaceHandler> TextureCanvas<'a, Message, Handler> {
         self
     }
 
-    pub fn on_release(mut self, on_release: impl Fn(Point) -> Message + 'a) -> Self {
+    pub fn on_release(mut self, on_release: impl Fn(Point, mouse::Button) -> Message + 'a) -> Self {
         self.on_release = Some(Box::new(on_release));
         self
     }
@@ -176,17 +176,28 @@ impl<'a, Message, Handler: SurfaceHandler> shader::Program<Message>
             }
 
             match event {
-                Event::Mouse(mouse::Event::ButtonPressed(mouse::Button::Left)) => {
+                Event::Mouse(mouse::Event::ButtonPressed(mouse::Button::Middle)) => {
+                    state.grabbing = true;
+                }
+                Event::Mouse(mouse::Event::ButtonReleased(mouse::Button::Middle)) => {
+                    state.grabbing = false;
+                    state.canvas_grab = None;
+                }
+
+                Event::Mouse(mouse::Event::ButtonPressed(mouse_button)) => {
                     state.mouse_down = true;
 
                     if state.mouse_over_image {
                         if let Some(on_press) = &self.on_pressed {
-                            return Some(shader::Action::publish(on_press(to_canvas_coords(
-                                bounds,
-                                mouse_pos,
-                                state.canvas_offset,
-                                state.zoom,
-                            ))));
+                            return Some(shader::Action::publish(on_press(
+                                to_canvas_coords(
+                                    bounds,
+                                    mouse_pos,
+                                    state.canvas_offset,
+                                    state.zoom,
+                                ),
+                                *mouse_button,
+                            )));
                         }
                     }
                 }
@@ -220,29 +231,24 @@ impl<'a, Message, Handler: SurfaceHandler> shader::Program<Message>
                     }
                 }
 
-                Event::Mouse(mouse::Event::ButtonReleased(mouse::Button::Left)) => {
+                Event::Mouse(mouse::Event::ButtonReleased(mouse_button)) => {
                     state.mouse_down = false;
 
                     if state.mouse_over_image {
                         if let Some(on_release) = &self.on_release {
-                            return Some(shader::Action::publish(on_release(to_canvas_coords(
-                                bounds,
-                                mouse_pos,
-                                state.canvas_offset,
-                                state.zoom,
-                            ))));
+                            return Some(shader::Action::publish(on_release(
+                                to_canvas_coords(
+                                    bounds,
+                                    mouse_pos,
+                                    state.canvas_offset,
+                                    state.zoom,
+                                ),
+                                *mouse_button,
+                            )));
                         }
                     }
                 }
 
-                Event::Mouse(mouse::Event::ButtonPressed(mouse::Button::Middle)) => {
-                    state.grabbing = true;
-                }
-                Event::Mouse(mouse::Event::ButtonReleased(mouse::Button::Middle)) => {
-                    state.grabbing = false;
-                    state.canvas_grab = None;
-                }
-                // TODO
                 Event::Mouse(mouse::Event::WheelScrolled { delta }) => match delta {
                     mouse::ScrollDelta::Lines { x, y } => {
                         // align the canvas to the mouse position when scaling.

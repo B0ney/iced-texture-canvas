@@ -1,6 +1,6 @@
 use iced::alignment::Horizontal;
 use iced::widget::{button, column, container, horizontal_rule};
-use iced::{Alignment, Border, Color, Element, Length, Point};
+use iced::{Alignment, Border, Color, Element, Length, Point, mouse};
 
 use iced_texture::{Controls, texture};
 
@@ -13,7 +13,8 @@ enum Message {
     Scale(f32),
     White,
     Black,
-    PutPixel(Point),
+    PutPixel(Point, mouse::Button),
+    Move(Point),
 }
 
 const WHITE: u32 = 0xffffffff;
@@ -46,40 +47,40 @@ impl Default for ShaderApp {
 }
 
 impl ShaderApp {
+    fn put_pixel(&mut self, point: Point) {
+        let width = self.pixmap.width() as usize;
+        let height = self.pixmap.height() as usize;
+
+        let buffer = self.pixmap.buffer_mut();
+
+        let px = point.x.round() as usize;
+        let py = point.y.round() as usize;
+
+        for x in 0..10 {
+            for y in 0..10 {
+                let x = px + x;
+                let y = py + y;
+
+                if x >= width || y >= height {
+                    continue;
+                }
+
+                buffer[y * width + x] = self.color;
+            }
+        }
+    }
+
     fn update(&mut self, msg: Message) {
         match msg {
-            Message::White => {
-                self.color = WHITE;
-            }
-
-            Message::Black => {
-                self.color = BLACK;
-            }
-
+            Message::White => self.color = WHITE,
+            Message::Black => self.color = BLACK,
             Message::Scale(_) => todo!(),
-
-            Message::PutPixel(point) => {
-                let width = self.pixmap.width() as usize;
-                let height = self.pixmap.height() as usize;
-
-                let buffer = self.pixmap.buffer_mut();
-
-                let px = point.x.round() as usize;
-                let py = point.y.round() as usize;
-
-                for x in 0..10 {
-                    for y in 0..10 {
-                        let x = px + x;
-                        let y = py + y;
-
-                        if x >= width || y >= height {
-                            continue;
-                        }
-
-                        buffer[y * width + x] = self.color;
-                    }
+            Message::PutPixel(point, button) => {
+                if button == mouse::Button::Left {
+                    self.put_pixel(point);
                 }
             }
+            Message::Move(point) => self.put_pixel(point),
         };
     }
 
@@ -89,8 +90,8 @@ impl ShaderApp {
                 texture(&self.pixmap, &self.controls)
                     .width(512)
                     .height(Length::Fixed(512.0))
+                    .on_move(Message::Move)
                     .on_release(Message::PutPixel)
-                    .on_move(Message::PutPixel),
             )
             .style(|_| container::Style {
                 text_color: None,
