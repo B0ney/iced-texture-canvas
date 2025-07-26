@@ -60,8 +60,8 @@ impl ShaderApp {
 
         let buffer = self.pixmap.buffer_mut();
 
-        let px = point.x.round() as usize;
-        let py = point.y.round() as usize;
+        let px = point.x.floor() as usize;
+        let py = point.y.floor() as usize;
 
         for x in 0..10 {
             for y in 0..10 {

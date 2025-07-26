@@ -19,14 +19,12 @@ const MIN_SCALE: f32 = 1.0; //0.05;
 
 pub fn texture<'a, Message: 'a + Clone, Handler: SurfaceHandler>(
     buffer: &'a Handler,
-    controls: &'a Controls,
 ) -> TextureCanvas<'a, Message, Handler> {
-    TextureCanvas::new(buffer, controls)
+    TextureCanvas::new(buffer)
 }
 
 pub struct TextureCanvas<'a, Message, Handler> {
     buffer: &'a Handler,
-    controls: &'a Controls, // TODO
     width: Length,
     height: Length,
 
@@ -42,10 +40,9 @@ pub struct TextureCanvas<'a, Message, Handler> {
 }
 
 impl<'a, Message: Clone, Handler: SurfaceHandler> TextureCanvas<'a, Message, Handler> {
-    pub fn new(buffer: &'a Handler, controls: &'a Controls) -> Self {
+    pub fn new(buffer: &'a Handler) -> Self {
         Self {
             buffer,
-            controls,
             on_grab: None,
             on_zoom: None,
             width: Length::Fill,
@@ -81,7 +78,6 @@ impl<'a, Message: Clone, Handler: SurfaceHandler> TextureCanvas<'a, Message, Han
         self
     }
 
-    // TODO include which button was pressed.
     pub fn on_press(mut self, on_press: impl Fn(Point, mouse::Button) -> Message + 'a) -> Self {
         self.on_pressed = Some(Box::new(on_press));
         self
