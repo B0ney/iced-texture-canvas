@@ -13,8 +13,11 @@ enum Message {
     Scale(f32),
     White,
     Black,
-    PutPixel(Point, mouse::Button, bool),
-    Move(Point, bool),
+    Entered,
+    Exited,
+    Move(Point),
+    StartDraw(Point, mouse::Button),
+    EndDraw(Point, mouse::Button),
 }
 
 const WHITE: u32 = 0xffffffff;
@@ -26,6 +29,8 @@ struct ShaderApp {
     color: u32,
     size: u8,
     offset: Point<f32>,
+    on_canvas: bool,
+    drawing: bool,
 }
 
 impl Default for ShaderApp {
@@ -42,6 +47,8 @@ impl Default for ShaderApp {
                 center: Default::default(),
             },
             size: 10,
+            on_canvas: false,
+            drawing: false,
         }
     }
 }
@@ -75,14 +82,27 @@ impl ShaderApp {
             Message::White => self.color = WHITE,
             Message::Black => self.color = BLACK,
             Message::Scale(_) => todo!(),
-            Message::PutPixel(point, button, on_canvas) => {
-                if button == mouse::Button::Left && on_canvas {
-                    self.put_pixel(point);
+            Message::Move(point) => {
+                if self.on_canvas && self.drawing {
+                    self.put_pixel(point)
                 }
             }
-            Message::Move(point, on_canvas) => {
-                if on_canvas {
-                    self.put_pixel(point)
+            Message::Entered => self.on_canvas = true,
+            Message::Exited => self.on_canvas = false,
+            Message::StartDraw(_, button) => {
+                if button == mouse::Button::Left {
+                    self.drawing = true
+                }
+            }
+            Message::EndDraw(last_point, button) => {
+                let was_drawing = self.drawing;
+
+                if button == mouse::Button::Left {
+                    self.drawing = false
+                }
+
+                if was_drawing {
+                    self.put_pixel(last_point);
                 }
             }
         };
@@ -94,8 +114,12 @@ impl ShaderApp {
                 texture(&self.pixmap, &self.controls)
                     .width(512)
                     .height(Length::Fixed(512.0))
+                    .mouse_interaction(mouse::Interaction::Crosshair)
+                    .on_enter(Message::Entered)
+                    .on_exit(Message::Exited)
                     .on_move(Message::Move)
-                    .on_release(Message::PutPixel)
+                    .on_press(Message::StartDraw)
+                    .on_release(Message::EndDraw)
             )
             .style(|_| container::Style {
                 text_color: None,

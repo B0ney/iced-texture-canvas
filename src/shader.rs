@@ -15,37 +15,47 @@ use iced_core::{Event, Length, Point, Rectangle, mouse};
 use iced_wgpu::wgpu;
 use iced_widget::shader;
 
-pub fn texture<'a, Message: 'a, Handler: SurfaceHandler>(
+const MIN_SCALE: f32 = 1.0; //0.05;
+
+pub fn texture<'a, Message: 'a + Clone, Handler: SurfaceHandler>(
     buffer: &'a Handler,
     controls: &'a Controls,
 ) -> TextureCanvas<'a, Message, Handler> {
     TextureCanvas::new(buffer, controls)
 }
 
-pub struct TextureCanvas<'a, Message, SurfaceHandler> {
-    buffer: &'a SurfaceHandler,
+pub struct TextureCanvas<'a, Message, Handler> {
+    buffer: &'a Handler,
     controls: &'a Controls, // TODO
     width: Length,
     height: Length,
-    on_drag: Option<Box<dyn Fn(Point) -> Message + 'a>>,
+
+    on_grab: Option<Box<dyn Fn() -> Message + 'a>>,
     on_zoom: Option<Box<dyn Fn(f32) -> Message + 'a>>,
     on_pressed: Option<Box<dyn Fn(Point, mouse::Button) -> Message + 'a>>,
-    on_move: Option<Box<dyn Fn(Point, bool) -> Message + 'a>>,
-    on_release: Option<Box<dyn Fn(Point, mouse::Button, bool) -> Message + 'a>>,
+    on_move: Option<Box<dyn Fn(Point) -> Message + 'a>>,
+    on_release: Option<Box<dyn Fn(Point, mouse::Button) -> Message + 'a>>,
+    on_enter: Option<Message>,
+    on_exit: Option<Message>,
+
+    interaction: Option<mouse::Interaction>,
 }
 
-impl<'a, Message, Handler: SurfaceHandler> TextureCanvas<'a, Message, Handler> {
+impl<'a, Message: Clone, Handler: SurfaceHandler> TextureCanvas<'a, Message, Handler> {
     pub fn new(buffer: &'a Handler, controls: &'a Controls) -> Self {
         Self {
             buffer,
             controls,
-            on_drag: None,
+            on_grab: None,
             on_zoom: None,
             width: Length::Fill,
             height: Length::Fill,
             on_pressed: None,
             on_move: None,
             on_release: None,
+            on_enter: None,
+            on_exit: None,
+            interaction: None,
         }
     }
 
@@ -61,8 +71,8 @@ impl<'a, Message, Handler: SurfaceHandler> TextureCanvas<'a, Message, Handler> {
         self
     }
 
-    pub fn on_drag(mut self, on_drag: impl Fn(Point) -> Message + 'a) -> Self {
-        self.on_drag = Some(Box::new(on_drag));
+    pub fn on_drag(mut self, on_drag: impl Fn() -> Message + 'a) -> Self {
+        self.on_grab = Some(Box::new(on_drag));
         self
     }
 
@@ -77,16 +87,28 @@ impl<'a, Message, Handler: SurfaceHandler> TextureCanvas<'a, Message, Handler> {
         self
     }
 
-    pub fn on_move(mut self, on_move: impl Fn(Point, bool) -> Message + 'a) -> Self {
+    pub fn on_move(mut self, on_move: impl Fn(Point) -> Message + 'a) -> Self {
         self.on_move = Some(Box::new(on_move));
         self
     }
 
-    pub fn on_release(
-        mut self,
-        on_release: impl Fn(Point, mouse::Button, bool) -> Message + 'a,
-    ) -> Self {
+    pub fn on_release(mut self, on_release: impl Fn(Point, mouse::Button) -> Message + 'a) -> Self {
         self.on_release = Some(Box::new(on_release));
+        self
+    }
+
+    pub fn on_enter(mut self, on_enter: Message) -> Self {
+        self.on_enter = Some(on_enter);
+        self
+    }
+
+    pub fn on_exit(mut self, on_exit: Message) -> Self {
+        self.on_exit = Some(on_exit);
+        self
+    }
+
+    pub fn mouse_interaction(mut self, mouse_interaction: mouse::Interaction) -> Self {
+        self.interaction = Some(mouse_interaction);
         self
     }
 }
@@ -94,7 +116,7 @@ impl<'a, Message, Handler: SurfaceHandler> TextureCanvas<'a, Message, Handler> {
 impl<'a, Message, Theme, Renderer, Handler> From<TextureCanvas<'a, Message, Handler>>
     for iced_core::Element<'a, Message, Theme, Renderer>
 where
-    Message: 'a,
+    Message: 'a + Clone,
     Renderer: iced_wgpu::primitive::Renderer,
     Handler: SurfaceHandler,
 {
@@ -105,7 +127,7 @@ where
     }
 }
 
-impl<'a, Message, Handler: SurfaceHandler> shader::Program<Message>
+impl<'a, Message: Clone, Handler: SurfaceHandler> shader::Program<Message>
     for TextureCanvas<'a, Message, Handler>
 {
     type State = State;
@@ -120,21 +142,21 @@ impl<'a, Message, Handler: SurfaceHandler> shader::Program<Message>
         Self::Primitive::new(
             self.buffer.create_weak(),
             state.canvas_offset,
-            state.zoom.clamp(1.0, 100.),
+            state.zoom.clamp(MIN_SCALE, 100.),
         )
     }
 
     fn mouse_interaction(
         &self,
-        _state: &Self::State,
+        state: &Self::State,
         _bounds: Rectangle,
         _cursor: mouse::Cursor,
     ) -> mouse::Interaction {
-        if _state.mouse_over_image {
-            mouse::Interaction::Crosshair
-        } else {
-            mouse::Interaction::None
+        if !state.is_hovered {
+            return mouse::Interaction::None;
         }
+
+        self.interaction.unwrap_or_default()
     }
 
     fn update(
@@ -159,7 +181,23 @@ impl<'a, Message, Handler: SurfaceHandler> shader::Program<Message>
                 height: self.buffer.height() as f32 * state.zoom,
             };
 
-            state.mouse_over_image = canvas_bounds.contains(mouse_pos);
+            let was_hovered = state.is_hovered;
+            state.is_hovered = cursor.is_over(canvas_bounds);
+
+            match (was_hovered, state.is_hovered) {
+                (false, true) => {
+                    if let Some(on_enter) = &self.on_enter {
+                        return Some(shader::Action::publish(on_enter.clone()));
+                    }
+                }
+
+                (true, false) => {
+                    if let Some(on_exit) = &self.on_exit {
+                        return Some(shader::Action::publish(on_exit.clone()));
+                    }
+                }
+                _ => (),
+            }
 
             fn to_canvas_coords(
                 bounds: Rectangle,
@@ -177,6 +215,10 @@ impl<'a, Message, Handler: SurfaceHandler> shader::Program<Message>
             match event {
                 Event::Mouse(mouse::Event::ButtonPressed(mouse::Button::Middle)) => {
                     state.grabbing = true;
+
+                    if let Some(on_grab) = &self.on_grab {
+                        return Some(shader::Action::publish(on_grab()));
+                    }
                 }
                 Event::Mouse(mouse::Event::ButtonReleased(mouse::Button::Middle)) => {
                     state.grabbing = false;
@@ -184,63 +226,41 @@ impl<'a, Message, Handler: SurfaceHandler> shader::Program<Message>
                 }
 
                 Event::Mouse(mouse::Event::ButtonPressed(mouse_button)) => {
-                    state.mouse_down = true;
-
-                    if state.mouse_over_image {
-                        if let Some(on_press) = &self.on_pressed {
-                            return Some(shader::Action::publish(on_press(
-                                to_canvas_coords(
-                                    bounds,
-                                    mouse_pos,
-                                    state.canvas_offset,
-                                    state.zoom,
-                                ),
-                                *mouse_button,
-                            )));
-                        }
+                    if let Some(on_press) = &self.on_pressed {
+                        return Some(shader::Action::publish(on_press(
+                            to_canvas_coords(bounds, mouse_pos, state.canvas_offset, state.zoom),
+                            *mouse_button,
+                        )));
                     }
                 }
 
                 Event::Mouse(mouse::Event::CursorMoved { position }) => {
                     let mouse_pos = *position;
 
-                    if state.mouse_down {
-                        if let Some(on_move) = &self.on_move {
-                            return Some(shader::Action::publish(on_move(
-                                to_canvas_coords(
-                                    bounds,
-                                    mouse_pos,
-                                    state.canvas_offset,
-                                    state.zoom,
-                                ),
-                                state.mouse_over_image,
-                            )));
+                    if state.grabbing {
+                        if let Some(pos) = state.canvas_grab {
+                            state.canvas_offset = Vec2::new(mouse_pos.x, mouse_pos.y) - pos
+                        } else {
+                            let position = Vec2::new(mouse_pos.x, mouse_pos.y);
+                            state.canvas_grab = Some(position - state.canvas_offset);
                         }
                     }
 
-                    if state.grabbing {
-                        match state.canvas_grab {
-                            Some(pos) => {
-                                state.canvas_offset = Vec2::new(mouse_pos.x, mouse_pos.y) - pos
-                            }
-                            None => {
-                                let position = Vec2::new(mouse_pos.x, mouse_pos.y);
-                                state.canvas_grab = Some(position - state.canvas_offset);
-                            }
-                        }
-
-                        return Some(shader::Action::request_redraw());
+                    if let Some(on_move) = &self.on_move {
+                        return Some(shader::Action::publish(on_move(to_canvas_coords(
+                            bounds,
+                            mouse_pos,
+                            state.canvas_offset,
+                            state.zoom,
+                        ))));
                     }
                 }
 
                 Event::Mouse(mouse::Event::ButtonReleased(mouse_button)) => {
-                    state.mouse_down = false;
-
                     if let Some(on_release) = &self.on_release {
                         return Some(shader::Action::publish(on_release(
                             to_canvas_coords(bounds, mouse_pos, state.canvas_offset, state.zoom),
                             *mouse_button,
-                            state.mouse_over_image,
                         )));
                     }
                 }
@@ -261,7 +281,14 @@ impl<'a, Message, Handler: SurfaceHandler> shader::Program<Message>
                         let x_percent = (point.x / canvas_bounds.width) * state.zoom;
                         let y_percent = (point.y / canvas_bounds.height) * state.zoom;
 
-                        state.zoom = (state.zoom + y).clamp(1.0, 10.);
+                        // TODO
+                        // let y = if state.zoom < 1. {
+                        //     if state.zoom + y < 1. { *y / 4.0 } else { *y }
+                        // } else {
+                        //     *y
+                        // };
+
+                        state.zoom = (state.zoom + y).clamp(MIN_SCALE, 10.);
 
                         // recalculate the bounds of the canvas
                         let new_canvas_bounds = Rectangle {
@@ -301,9 +328,9 @@ pub struct State {
     grabbing: bool,
     canvas_offset: glam::Vec2,
     zoom: f32,
-    mouse_over_image: bool,
-    mouse_down: bool,
+    is_hovered: bool,
 }
+
 impl Default for State {
     fn default() -> Self {
         Self {
@@ -311,18 +338,16 @@ impl Default for State {
             grabbing: Default::default(),
             canvas_offset: Default::default(),
             zoom: 1.0,
-            mouse_over_image: Default::default(),
-            mouse_down: Default::default(),
+            is_hovered: Default::default(),
         }
     }
 }
 
 impl State {
     pub fn reset(&mut self) {
-        self.mouse_over_image = false;
+        self.is_hovered = false;
         self.grabbing = false;
         self.canvas_grab = None;
-        self.mouse_down = false;
     }
 }
 
