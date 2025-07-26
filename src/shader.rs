@@ -30,8 +30,8 @@ pub struct TextureCanvas<'a, Message, SurfaceHandler> {
     on_drag: Option<Box<dyn Fn(Point) -> Message + 'a>>,
     on_zoom: Option<Box<dyn Fn(f32) -> Message + 'a>>,
     on_pressed: Option<Box<dyn Fn(Point, mouse::Button) -> Message + 'a>>,
-    on_move: Option<Box<dyn Fn(Point) -> Message + 'a>>,
-    on_release: Option<Box<dyn Fn(Point, mouse::Button) -> Message + 'a>>,
+    on_move: Option<Box<dyn Fn(Point, bool) -> Message + 'a>>,
+    on_release: Option<Box<dyn Fn(Point, mouse::Button, bool) -> Message + 'a>>,
 }
 
 impl<'a, Message, Handler: SurfaceHandler> TextureCanvas<'a, Message, Handler> {
@@ -77,12 +77,15 @@ impl<'a, Message, Handler: SurfaceHandler> TextureCanvas<'a, Message, Handler> {
         self
     }
 
-    pub fn on_move(mut self, on_move: impl Fn(Point) -> Message + 'a) -> Self {
+    pub fn on_move(mut self, on_move: impl Fn(Point, bool) -> Message + 'a) -> Self {
         self.on_move = Some(Box::new(on_move));
         self
     }
 
-    pub fn on_release(mut self, on_release: impl Fn(Point, mouse::Button) -> Message + 'a) -> Self {
+    pub fn on_release(
+        mut self,
+        on_release: impl Fn(Point, mouse::Button, bool) -> Message + 'a,
+    ) -> Self {
         self.on_release = Some(Box::new(on_release));
         self
     }
@@ -205,14 +208,17 @@ impl<'a, Message, Handler: SurfaceHandler> shader::Program<Message>
                 Event::Mouse(mouse::Event::CursorMoved { position }) => {
                     let mouse_pos = *position;
 
-                    if state.mouse_over_image && state.mouse_down {
+                    if state.mouse_down {
                         if let Some(on_move) = &self.on_move {
-                            return Some(shader::Action::publish(on_move(to_canvas_coords(
-                                bounds,
-                                mouse_pos,
-                                state.canvas_offset,
-                                state.zoom,
-                            ))));
+                            return Some(shader::Action::publish(on_move(
+                                to_canvas_coords(
+                                    bounds,
+                                    mouse_pos,
+                                    state.canvas_offset,
+                                    state.zoom,
+                                ),
+                                state.mouse_over_image,
+                            )));
                         }
                     }
 
@@ -234,18 +240,12 @@ impl<'a, Message, Handler: SurfaceHandler> shader::Program<Message>
                 Event::Mouse(mouse::Event::ButtonReleased(mouse_button)) => {
                     state.mouse_down = false;
 
-                    if state.mouse_over_image {
-                        if let Some(on_release) = &self.on_release {
-                            return Some(shader::Action::publish(on_release(
-                                to_canvas_coords(
-                                    bounds,
-                                    mouse_pos,
-                                    state.canvas_offset,
-                                    state.zoom,
-                                ),
-                                *mouse_button,
-                            )));
-                        }
+                    if let Some(on_release) = &self.on_release {
+                        return Some(shader::Action::publish(on_release(
+                            to_canvas_coords(bounds, mouse_pos, state.canvas_offset, state.zoom),
+                            *mouse_button,
+                            state.mouse_over_image,
+                        )));
                     }
                 }
 

@@ -13,8 +13,8 @@ enum Message {
     Scale(f32),
     White,
     Black,
-    PutPixel(Point, mouse::Button),
-    Move(Point),
+    PutPixel(Point, mouse::Button, bool),
+    Move(Point, bool),
 }
 
 const WHITE: u32 = 0xffffffff;
@@ -75,12 +75,16 @@ impl ShaderApp {
             Message::White => self.color = WHITE,
             Message::Black => self.color = BLACK,
             Message::Scale(_) => todo!(),
-            Message::PutPixel(point, button) => {
-                if button == mouse::Button::Left {
+            Message::PutPixel(point, button, on_canvas) => {
+                if button == mouse::Button::Left && on_canvas {
                     self.put_pixel(point);
                 }
             }
-            Message::Move(point) => self.put_pixel(point),
+            Message::Move(point, on_canvas) => {
+                if on_canvas {
+                    self.put_pixel(point)
+                }
+            }
         };
     }
 
