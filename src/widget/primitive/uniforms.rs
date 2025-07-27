@@ -64,7 +64,7 @@ impl UniformsRaw {
         let (width, height) = (screen.width, screen.height);
 
         let position = center;
-        let projection = scren_to_mat(0.0, width, height, 0.);
+        let projection = screen_to_mat(0.0, width, height, 0.);
 
         let scale = glam::Vec3::new(texture.width, texture.height, 0.0);
         let pos = glam::Vec3::new(position.x, position.y, 0.0);
@@ -79,6 +79,6 @@ impl UniformsRaw {
     }
 }
 
-fn scren_to_mat(left: f32, right: f32, bottom: f32, up: f32) -> glam::Mat4 {
+fn screen_to_mat(left: f32, right: f32, bottom: f32, up: f32) -> glam::Mat4 {
     glam::Mat4::orthographic_rh(left, right, bottom, up, 0., 1.)
 }

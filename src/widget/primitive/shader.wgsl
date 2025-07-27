@@ -37,8 +37,8 @@ fn vs_main(in: VertexIn) -> VertexOut {
     let xy = pos[in.vertex_index];
     
     var out: VertexOut;
-    out.tex_coord = vec2f(xy.x, xy.y);
-    out.position =  uniforms.projection * vec4f(xy, 0.0, 1.0) ;
+    out.tex_coord = xy;
+    out.position = uniforms.projection * vec4f(xy, 0.0, 1.0); // TODO: opacity
     return out;
 }
 

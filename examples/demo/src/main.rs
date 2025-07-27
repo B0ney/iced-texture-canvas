@@ -15,6 +15,7 @@ enum Message {
     Black,
     Entered,
     Exited,
+    Blit,
     Move(Point),
     StartDraw(Point, mouse::Button),
     EndDraw(Point, mouse::Button),
@@ -35,8 +36,20 @@ struct ShaderApp {
 
 impl Default for ShaderApp {
     fn default() -> Self {
-        let mut bitmap = iced_texture::bitmap(256, 192);
-        bitmap.update(include_bytes!("out.rgba").as_slice());
+        let decoder = image::codecs::png::PngDecoder::new(std::io::Cursor::new(include_bytes!(
+            "happy-tree.png"
+        )))
+        .unwrap();
+
+        let a = image::DynamicImage::from_decoder(decoder)
+            .unwrap()
+            .to_rgba8();
+
+        let mut bitmap = iced_texture::bitmap(a.width(), a.height());
+
+        let a = a.into_raw();
+
+        bitmap.update(&a);
 
         Self {
             pixmap: bitmap,
@@ -105,15 +118,14 @@ impl ShaderApp {
                     self.put_pixel(last_point);
                 }
             }
+            Message::Blit => {}
         };
     }
 
     fn view(&self) -> Element<Message> {
         column![
             container(
-                texture(&self.pixmap, &self.controls)
-                    .width(512)
-                    .height(Length::Fixed(512.0))
+                texture(&self.pixmap)
                     .mouse_interaction(mouse::Interaction::Crosshair)
                     .on_enter(Message::Entered)
                     .on_exit(Message::Exited)
@@ -123,18 +135,13 @@ impl ShaderApp {
             )
             .style(|_| container::Style {
                 text_color: None,
-                background: None,
-                border: Border {
-                    color: Color::BLACK,
-                    width: 2.0,
-                    radius: 0.0.into()
-                },
-                shadow: Default::default(),
-                snap: false
+                background: Some(Color::from_rgba8(127, 127, 127, 1.).into()),
+                ..Default::default()
             }),
             horizontal_rule(1.0),
             button("Black Square").on_press(Message::Black),
             button("White Square").on_press(Message::White),
+            button("Blit").on_press(Message::Blit),
         ]
         .align_x(Horizontal::Center)
         .into()

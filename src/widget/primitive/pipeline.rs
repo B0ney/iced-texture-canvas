@@ -1,10 +1,9 @@
+use super::texture;
+use super::uniforms::{self, Uniform};
+use crate::widget::Surface;
+
 use iced_core::Rectangle;
 use iced_wgpu::wgpu;
-
-use crate::shader::Surface;
-
-use super::texture::{self};
-use super::uniforms::{self, Uniform};
 
 pub(crate) struct Pipeline {
     pipeline: wgpu::RenderPipeline,
