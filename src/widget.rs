@@ -197,11 +197,12 @@ where
     }
 }
 
-impl<'a, Message, Theme, Renderer, Handler: SurfaceHandler> Widget<Message, Theme, Renderer>
+impl<'a, Message, Theme, Renderer, Handler> Widget<Message, Theme, Renderer>
     for TextureCanvas<'a, Message, Theme, Handler>
 where
     Renderer: iced_wgpu::primitive::Renderer,
     Theme: Catalog,
+    Handler: SurfaceHandler,
 {
     fn tag(&self) -> widget::tree::Tag {
         struct Tag<T>(T);
