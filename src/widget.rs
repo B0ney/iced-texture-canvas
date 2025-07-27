@@ -22,7 +22,7 @@ pub fn texture<'a, Message, Theme, Handler>(
     buffer: &'a Handler,
 ) -> TextureCanvas<'a, Message, Theme, Handler>
 where
-    Message: 'a + Clone,
+    Message: 'a,
     Theme: Catalog,
     Handler: SurfaceHandler,
 {
@@ -44,15 +44,14 @@ where
     on_pressed: Option<Box<dyn Fn(Point, mouse::Button) -> Message + 'a>>,
     on_move: Option<Box<dyn Fn(Point) -> Message + 'a>>,
     on_release: Option<Box<dyn Fn(Point, mouse::Button) -> Message + 'a>>,
-    on_enter: Option<Message>,
-    on_exit: Option<Message>,
+    on_enter: Option<Box<dyn Fn() -> Message + 'a>>,
+    on_exit: Option<Box<dyn Fn() -> Message + 'a>>,
 
     interaction: Option<mouse::Interaction>,
 }
 
 impl<'a, Message, Theme, Handler> TextureCanvas<'a, Message, Theme, Handler>
 where
-    Message: Clone,
     Theme: style::Catalog,
     Handler: SurfaceHandler,
 {
@@ -125,13 +124,34 @@ where
         self
     }
 
-    pub fn on_enter(mut self, on_enter: Message) -> Self {
-        self.on_enter = Some(on_enter);
+    pub fn on_enter_with(mut self, on_exit: impl Fn() -> Message + 'a) -> Self {
+        self.on_exit = Some(Box::new(on_exit));
         self
     }
 
-    pub fn on_exit(mut self, on_exit: Message) -> Self {
-        self.on_exit = Some(on_exit);
+    pub fn on_enter(mut self, on_enter: impl Into<Option<Message>>) -> Self
+    where
+        Message: Clone + 'a,
+    {
+        if let Some(on_enter) = on_enter.into() {
+            self.on_enter = Some(Box::new(move || on_enter.clone()))
+        }
+
+        self
+    }
+
+    pub fn on_exit_with(mut self, on_exit: impl Fn() -> Message + 'a) -> Self {
+        self.on_exit = Some(Box::new(on_exit));
+        self
+    }
+
+    pub fn on_exit(mut self, on_exit: impl Into<Option<Message>>) -> Self
+    where
+        Message: Clone + 'a,
+    {
+        if let Some(on_exit) = on_exit.into() {
+            self.on_exit = Some(Box::new(move || on_exit.clone()))
+        }
         self
     }
 
@@ -141,7 +161,7 @@ where
     }
 }
 
-impl<'a, Message: Clone, Theme, Renderer, Handler: SurfaceHandler> Widget<Message, Theme, Renderer>
+impl<'a, Message, Theme, Renderer, Handler: SurfaceHandler> Widget<Message, Theme, Renderer>
     for TextureCanvas<'a, Message, Theme, Handler>
 where
     Renderer: iced_wgpu::primitive::Renderer,
@@ -297,13 +317,13 @@ where
                 match (was_hovered, state.is_hovered) {
                     (false, true) => {
                         if let Some(on_enter) = &self.on_enter {
-                            shell.publish(on_enter.clone());
+                            shell.publish(on_enter());
                         }
                     }
 
                     (true, false) => {
                         if let Some(on_exit) = &self.on_exit {
-                            shell.publish(on_exit.clone());
+                            shell.publish(on_exit());
                         }
                     }
                     _ => (),
@@ -438,7 +458,7 @@ where
 impl<'a, Message, Theme, Renderer, Handler> From<TextureCanvas<'a, Message, Theme, Handler>>
     for iced_core::Element<'a, Message, Theme, Renderer>
 where
-    Message: Clone + 'a,
+    Message: 'a,
     Theme: Catalog + 'a,
     Renderer: iced_wgpu::primitive::Renderer,
     Handler: SurfaceHandler,
