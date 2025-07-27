@@ -8,7 +8,6 @@ use style::{Catalog, Status, Style, StyleFn};
 use surface::{Surface, SurfaceHandler};
 
 use glam::Vec2;
-use std::fmt::Debug;
 
 use iced_core::{
     Border, Element, Event, Layout, Length, Point, Rectangle, Shadow, Shell, Size, Widget, layout,
@@ -18,7 +17,7 @@ use iced_core::{
 const MIN_SCALE: f32 = 1.0; //0.05;
 const MAX_SCALE: f32 = 1600.0;
 
-pub fn texture<'a, Message, Theme, Handler>(
+pub fn texture_canvas<'a, Message, Theme, Handler>(
     buffer: &'a Handler,
 ) -> TextureCanvas<'a, Message, Theme, Handler>
 where

@@ -447,7 +447,7 @@ name = "demo"
 version = "0.1.0"
 dependencies = [
  "iced",
- "iced_texture",
+ "iced_texture_canvas",
  "image",
 ]
 
@@ -967,7 +967,7 @@ dependencies = [
 ]
 
 [[package]]
-name = "iced_texture"
+name = "iced_texture_canvas"
 version = "0.1.0"
 dependencies = [
  "bytemuck",

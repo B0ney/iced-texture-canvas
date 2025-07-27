@@ -1,5 +1,5 @@
 [package]
-name = "iced_texture"
+name = "iced_texture_canvas"
 version = "0.1.0"
 edition = "2024"
 
@@ -7,7 +7,7 @@ edition = "2024"
 members = ["examples/*"]
 
 [workspace.dependencies]
-iced_texture = { path = "." }
+iced_texture_canvas = { path = "." }
 
 [dependencies]
 bytemuck = { version = "1.16.0" }

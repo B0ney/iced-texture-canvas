@@ -1,4 +1,4 @@
-# Iced-Texture-Widget (WIP)
+# Iced-Texture-Canvas (WIP)
 
 A widget similar to a [`image::Viewer`](https://docs.iced.rs/iced/widget/image/viewer/index.html) that lets you view bitmap data but with added enhancements.
 

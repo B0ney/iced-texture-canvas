@@ -2,7 +2,7 @@ use iced::alignment::Horizontal;
 use iced::widget::{button, column, container, horizontal_rule};
 use iced::{Color, Element, Point, mouse};
 
-use iced_texture::{Bitmap, texture};
+use iced_texture_canvas::{Bitmap, bitmap, texture_canvas};
 
 fn main() -> iced::Result {
     iced::application(BasicPaint::default, BasicPaint::update, BasicPaint::view)
@@ -99,7 +99,7 @@ impl BasicPaint {
     fn view(&self) -> Element<Message> {
         column![
             container(
-                texture(&self.bitmap)
+                texture_canvas(&self.bitmap)
                     .mouse_interaction(mouse::Interaction::Crosshair)
                     .on_move(Message::Move)
                     .on_press(Message::StartDraw)
@@ -129,7 +129,7 @@ fn load_image() -> Bitmap {
     let image = image::DynamicImage::from_decoder(png_decoder).expect("valid png image");
 
     // create a new bitmap
-    let mut bitmap = iced_texture::bitmap(image.width(), image.height());
+    let mut bitmap = bitmap(image.width(), image.height());
 
     // update bitmap with the image data
     let rgba = image.to_rgba8().into_raw();
