@@ -31,7 +31,7 @@ pub struct TextureCanvas<'a, Message, Handler> {
     width: Length,
     height: Length,
 
-    background: Background,
+    background: Color,
     shadow: Shadow,
     outline_color: Color,
     outline_thickness: f32,
@@ -81,14 +81,14 @@ impl<'a, Message: Clone, Handler: SurfaceHandler> TextureCanvas<'a, Message, Han
     }
 
     /// Set the `background` color of the viewed image.
-    pub fn background(mut self, background: impl Into<Background>) -> Self {
-        self.background = background.into();
+    pub fn background(mut self, background: impl Into<Option<Color>>) -> Self {
+        self.background = background.into().unwrap_or(Color::TRANSPARENT);
         self
     }
 
     /// Set the `outline` color of the viewed image.
-    pub fn outline_color(mut self, outline_color: Color) -> Self {
-        self.outline_color = outline_color;
+    pub fn outline_color(mut self, outline_color: impl Into<Option<Color>>) -> Self {
+        self.outline_color = outline_color.into().unwrap_or(Color::TRANSPARENT);
         self
     }
 
