@@ -2,7 +2,7 @@ pub mod pipeline;
 pub mod texture;
 pub mod uniforms;
 
-use crate::shader::surface::Surface;
+use crate::widget::surface::Surface;
 
 use pipeline::Pipeline;
 use uniforms::UniformsRaw;

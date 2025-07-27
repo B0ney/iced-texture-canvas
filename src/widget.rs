@@ -1,4 +1,4 @@
-pub mod primitive;
+mod primitive;
 pub mod style;
 pub mod surface;
 

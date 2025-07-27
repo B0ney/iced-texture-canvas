@@ -1,6 +1,6 @@
 use super::texture;
 use super::uniforms::{self, Uniform};
-use crate::shader::Surface;
+use crate::widget::Surface;
 
 use iced_core::Rectangle;
 use iced_wgpu::wgpu;

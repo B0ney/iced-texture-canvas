@@ -1,5 +1,5 @@
 //! Concrete implementation of the [`SurfaceHandler`] (and Surface) in the form of a [`Bitmap`]
-use crate::shader::surface::SurfaceHandler;
+use crate::widget::surface::SurfaceHandler;
 
 use std::num::NonZeroU32;
 use std::sync::atomic::{AtomicBool, Ordering};
