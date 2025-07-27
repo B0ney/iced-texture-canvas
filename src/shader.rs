@@ -12,13 +12,11 @@ use std::fmt::Debug;
 use std::sync::Weak;
 
 use iced_core::{
-    Border, Color, Element, Event, Layout, Length, Point, Rectangle, Shadow, Shell, Size, Vector,
-    Widget, layout, mouse, renderer, widget,
+    Background, Border, Color, Element, Event, Layout, Length, Point, Rectangle, Shadow, Shell,
+    Size, Widget, layout, mouse, renderer, widget, window,
 };
 use iced_wgpu::wgpu;
 use iced_widget::shader;
-
-use iced_core::Renderer as _;
 
 const MIN_SCALE: f32 = 1.0; //0.05;
 
@@ -32,6 +30,11 @@ pub struct TextureCanvas<'a, Message, Handler> {
     buffer: &'a Handler,
     width: Length,
     height: Length,
+
+    background: Background,
+    shadow: Shadow,
+    outline_color: Color,
+    outline_thickness: f32,
 
     on_grab: Option<Box<dyn Fn() -> Message + 'a>>,
     on_zoom: Option<Box<dyn Fn(f32) -> Message + 'a>>,
@@ -48,10 +51,14 @@ impl<'a, Message: Clone, Handler: SurfaceHandler> TextureCanvas<'a, Message, Han
     pub fn new(buffer: &'a Handler) -> Self {
         Self {
             buffer,
-            on_grab: None,
-            on_zoom: None,
+            background: Color::TRANSPARENT.into(),
+            shadow: Shadow::default(),
+            outline_color: Color::BLACK,
+            outline_thickness: 1.0,
             width: Length::Fill,
             height: Length::Fill,
+            on_grab: None,
+            on_zoom: None,
             on_pressed: None,
             on_move: None,
             on_release: None,
@@ -70,6 +77,30 @@ impl<'a, Message: Clone, Handler: SurfaceHandler> TextureCanvas<'a, Message, Han
     /// Set the `height` of the [`TextureCanvas`].
     pub fn height(mut self, height: impl Into<Length>) -> Self {
         self.height = height.into();
+        self
+    }
+
+    /// Set the `background` color of the viewed image.
+    pub fn background(mut self, background: impl Into<Background>) -> Self {
+        self.background = background.into();
+        self
+    }
+
+    /// Set the `outline` color of the viewed image.
+    pub fn outline_color(mut self, outline_color: Color) -> Self {
+        self.outline_color = outline_color;
+        self
+    }
+
+    /// Set the `outline` thickness of the viewed image.
+    pub fn outline_thickness(mut self, outline_thickness: f32) -> Self {
+        self.outline_thickness = outline_thickness;
+        self
+    }
+
+    /// Set the `shadow` property of the viewed image.
+    pub fn shadow(mut self, shadow: Shadow) -> Self {
+        self.shadow = shadow;
         self
     }
 
@@ -146,58 +177,54 @@ where
 
     fn draw(
         &self,
-
         tree: &widget::Tree,
         renderer: &mut Renderer,
         _theme: &Theme,
         _style: &renderer::Style,
         layout: Layout<'_>,
-        cursor_position: mouse::Cursor,
+        _cursor_position: mouse::Cursor,
         _viewport: &Rectangle,
     ) {
         let bounds = layout.bounds();
         let state = tree.state.downcast_ref::<State>();
 
         let Vec2 { x, y } = state.canvas_offset;
-        let scale = state.zoom;
-        let width = self.buffer.width() as f32 * scale;
-        let height = self.buffer.height() as f32 * scale;
+        let scale = state.scale;
 
-        // layout::
+        let texture_width = self.buffer.width() as f32 * scale;
+        let texture_height = self.buffer.height() as f32 * scale;
 
-        // renderer.
+        let thickness = self.outline_thickness;
 
         renderer.with_layer(bounds, |renderer| {
+            // Draw the outlines, shadows and backdrop.
             renderer.fill_quad(
                 renderer::Quad {
                     bounds: Rectangle {
-                        x,
-                        y,
-                        width,
-                        height,
+                        x: x - thickness,
+                        y: y - thickness,
+                        width: texture_width + (thickness * 2.),
+                        height: texture_height + (thickness * 2.),
                     },
                     border: Border {
-                        color: Color::BLACK,
-                        width: 2.0,
+                        color: self.outline_color,
+                        width: thickness,
                         radius: 0.0.into(),
                     },
-                    shadow: Shadow {
-                        color: Color::BLACK,
-                        offset: Vector { x: 20.0, y: 20.0 },
-                        blur_radius: 3.0,
-                    },
+                    shadow: self.shadow,
                     snap: false,
                     ..Default::default()
                 },
-                Color::TRANSPARENT,
+                self.background,
             );
 
+            // Draw the image.
             renderer.draw_primitive(
                 bounds,
                 Primitive::new(
                     self.buffer.create_weak(),
                     state.canvas_offset,
-                    state.zoom.clamp(MIN_SCALE, 100.),
+                    state.scale.clamp(MIN_SCALE, 100.),
                 ),
             );
         });
@@ -206,12 +233,12 @@ where
     fn mouse_interaction(
         &self,
         tree: &widget::Tree,
-        layout: Layout<'_>,
-        cursor: mouse::Cursor,
+        _layout: Layout<'_>,
+        _cursor: mouse::Cursor,
         _viewport: &Rectangle,
         _renderer: &Renderer,
     ) -> mouse::Interaction {
-        let state = tree.state.downcast_ref::<State>();
+        let state: &State = tree.state.downcast_ref::<State>();
 
         if !state.is_hovered {
             return mouse::Interaction::None;
@@ -240,14 +267,15 @@ where
             return;
         }
 
+        // TODO: move to inner
         if let mouse::Cursor::Available(mouse_pos) = cursor {
             let glam::Vec2 { x, y } = state.canvas_offset;
 
             let canvas_bounds = Rectangle {
                 x: x + bounds.x,
                 y: y + bounds.y,
-                width: self.buffer.width() as f32 * state.zoom,
-                height: self.buffer.height() as f32 * state.zoom,
+                width: self.buffer.width() as f32 * state.scale,
+                height: self.buffer.height() as f32 * state.scale,
             };
 
             let was_hovered = state.is_hovered;
@@ -297,7 +325,7 @@ where
                 Event::Mouse(mouse::Event::ButtonPressed(mouse_button)) => {
                     if let Some(on_press) = &self.on_pressed {
                         shell.publish(on_press(
-                            to_canvas_coords(bounds, mouse_pos, state.canvas_offset, state.zoom),
+                            to_canvas_coords(bounds, mouse_pos, state.canvas_offset, state.scale),
                             *mouse_button,
                         ));
                     }
@@ -320,7 +348,7 @@ where
                             bounds,
                             mouse_pos,
                             state.canvas_offset,
-                            state.zoom,
+                            state.scale,
                         )));
                     } else if state.grabbing {
                         shell.request_redraw();
@@ -330,7 +358,7 @@ where
                 Event::Mouse(mouse::Event::ButtonReleased(mouse_button)) => {
                     if let Some(on_release) = &self.on_release {
                         shell.publish(on_release(
-                            to_canvas_coords(bounds, mouse_pos, state.canvas_offset, state.zoom),
+                            to_canvas_coords(bounds, mouse_pos, state.canvas_offset, state.scale),
                             *mouse_button,
                         ));
                     }
@@ -347,10 +375,10 @@ where
 
                         // calculate the % the cursor is from the canvas.
                         let point =
-                            to_canvas_coords(bounds, mouse_pos, state.canvas_offset, state.zoom);
+                            to_canvas_coords(bounds, mouse_pos, state.canvas_offset, state.scale);
 
-                        let x_percent = (point.x / canvas_bounds.width) * state.zoom;
-                        let y_percent = (point.y / canvas_bounds.height) * state.zoom;
+                        let x_percent = (point.x / canvas_bounds.width) * state.scale;
+                        let y_percent = (point.y / canvas_bounds.height) * state.scale;
 
                         // TODO
                         // let y = if state.zoom < 1. {
@@ -359,14 +387,14 @@ where
                         //     *y
                         // };
 
-                        state.zoom = (state.zoom + y).clamp(MIN_SCALE, 10.);
+                        state.scale = (state.scale + y).clamp(MIN_SCALE, 10.);
 
                         // recalculate the bounds of the canvas
                         let new_canvas_bounds = Rectangle {
                             x: x + bounds.x,
                             y: y + bounds.y,
-                            width: self.buffer.width() as f32 * state.zoom,
-                            height: self.buffer.height() as f32 * state.zoom,
+                            width: self.buffer.width() as f32 * state.scale,
+                            height: self.buffer.height() as f32 * state.scale,
                         };
 
                         // move the canvas offset to satisfy the percentages.
@@ -375,13 +403,16 @@ where
                             (mouse_pos.y - new_canvas_bounds.height * y_percent) - bounds.y,
                         );
 
-                        return shell.request_redraw();
+                        shell.request_redraw();
                     }
 
                     mouse::ScrollDelta::Pixels { y, .. } => {
                         todo!()
                     }
                 },
+                Event::Window(window::Event::Resized(new_size)) => {
+                    // TODO: center texture
+                }
                 _ => (),
             }
         } else {
@@ -408,7 +439,7 @@ pub struct State {
     canvas_grab: Option<glam::Vec2>,
     grabbing: bool,
     canvas_offset: glam::Vec2,
-    zoom: f32,
+    scale: f32,
     is_hovered: bool,
 }
 
@@ -418,7 +449,7 @@ impl Default for State {
             canvas_grab: Default::default(),
             grabbing: Default::default(),
             canvas_offset: Default::default(),
-            zoom: 1.0,
+            scale: 1.0,
             is_hovered: Default::default(),
         }
     }

@@ -4,9 +4,10 @@ version = "0.1.0"
 edition = "2024"
 
 [dependencies]
+image = { version = "0.25", default-features = false, features = ["png"] }
+
 iced_texture.workspace = true
 iced = { version = "0.14.0-dev", default-features = false, features = [
     "wgpu",
-    "smol",
-    # "auto-detect-theme",
+    "thread-pool",
 ] }
