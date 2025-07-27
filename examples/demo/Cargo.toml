@@ -8,5 +8,5 @@ iced_texture.workspace = true
 iced = { version = "0.14.0-dev", default-features = false, features = [
     "wgpu",
     "smol",
-    "auto-detect-theme",
+    # "auto-detect-theme",
 ] }

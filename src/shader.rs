@@ -11,9 +11,14 @@ use glam::Vec2;
 use std::fmt::Debug;
 use std::sync::Weak;
 
-use iced_core::{Event, Length, Point, Rectangle, mouse};
+use iced_core::{
+    Border, Color, Element, Event, Layout, Length, Point, Rectangle, Shadow, Shell, Size, Vector,
+    Widget, layout, mouse, renderer, widget,
+};
 use iced_wgpu::wgpu;
 use iced_widget::shader;
+
+use iced_core::Renderer as _;
 
 const MIN_SCALE: f32 = 1.0; //0.05;
 
@@ -109,45 +114,105 @@ impl<'a, Message: Clone, Handler: SurfaceHandler> TextureCanvas<'a, Message, Han
     }
 }
 
-impl<'a, Message, Theme, Renderer, Handler> From<TextureCanvas<'a, Message, Handler>>
-    for iced_core::Element<'a, Message, Theme, Renderer>
-where
-    Message: 'a + Clone,
-    Renderer: iced_wgpu::primitive::Renderer,
-    Handler: SurfaceHandler,
-{
-    fn from(value: TextureCanvas<'a, Message, Handler>) -> Self {
-        let width = value.width;
-        let height = value.height;
-        shader(value).width(width).height(height).into()
-    }
-}
-
-impl<'a, Message: Clone, Handler: SurfaceHandler> shader::Program<Message>
+impl<'a, Message: Clone, Theme, Renderer, Handler: SurfaceHandler> Widget<Message, Theme, Renderer>
     for TextureCanvas<'a, Message, Handler>
+where
+    Renderer: iced_wgpu::primitive::Renderer,
 {
-    type State = State;
-    type Primitive = Primitive<Handler::Surface>;
+    fn tag(&self) -> widget::tree::Tag {
+        struct Tag<T>(T);
+        widget::tree::Tag::of::<Tag<State>>()
+    }
+
+    fn state(&self) -> widget::tree::State {
+        widget::tree::State::new(State::default())
+    }
+
+    fn size(&self) -> Size<Length> {
+        Size {
+            width: self.width,
+            height: self.height,
+        }
+    }
+
+    fn layout(
+        &self,
+        _tree: &mut widget::Tree,
+        _renderer: &Renderer,
+        limits: &layout::Limits,
+    ) -> layout::Node {
+        layout::atomic(limits, self.width, self.height)
+    }
 
     fn draw(
         &self,
-        state: &Self::State,
-        cursor: mouse::Cursor,
-        bounds: Rectangle,
-    ) -> Self::Primitive {
-        Self::Primitive::new(
-            self.buffer.create_weak(),
-            state.canvas_offset,
-            state.zoom.clamp(MIN_SCALE, 100.),
-        )
+
+        tree: &widget::Tree,
+        renderer: &mut Renderer,
+        _theme: &Theme,
+        _style: &renderer::Style,
+        layout: Layout<'_>,
+        cursor_position: mouse::Cursor,
+        _viewport: &Rectangle,
+    ) {
+        let bounds = layout.bounds();
+        let state = tree.state.downcast_ref::<State>();
+
+        let Vec2 { x, y } = state.canvas_offset;
+        let scale = state.zoom;
+        let width = self.buffer.width() as f32 * scale;
+        let height = self.buffer.height() as f32 * scale;
+
+        // layout::
+
+        // renderer.
+
+        renderer.with_layer(bounds, |renderer| {
+            renderer.fill_quad(
+                renderer::Quad {
+                    bounds: Rectangle {
+                        x,
+                        y,
+                        width,
+                        height,
+                    },
+                    border: Border {
+                        color: Color::BLACK,
+                        width: 2.0,
+                        radius: 0.0.into(),
+                    },
+                    shadow: Shadow {
+                        color: Color::BLACK,
+                        offset: Vector { x: 20.0, y: 20.0 },
+                        blur_radius: 3.0,
+                    },
+                    snap: false,
+                    ..Default::default()
+                },
+                Color::TRANSPARENT,
+            );
+
+            renderer.draw_primitive(
+                bounds,
+                Primitive::new(
+                    self.buffer.create_weak(),
+                    state.canvas_offset,
+                    state.zoom.clamp(MIN_SCALE, 100.),
+                ),
+            );
+        });
     }
 
     fn mouse_interaction(
         &self,
-        state: &Self::State,
-        _bounds: Rectangle,
-        _cursor: mouse::Cursor,
+        tree: &widget::Tree,
+        layout: Layout<'_>,
+        cursor: mouse::Cursor,
+        _viewport: &Rectangle,
+        _renderer: &Renderer,
     ) -> mouse::Interaction {
+        let state = tree.state.downcast_ref::<State>();
+
         if !state.is_hovered {
             return mouse::Interaction::None;
         }
@@ -156,15 +221,23 @@ impl<'a, Message: Clone, Handler: SurfaceHandler> shader::Program<Message>
     }
 
     fn update(
-        &self,
-        state: &mut Self::State,
+        &mut self,
+        tree: &mut widget::Tree,
         event: &Event,
-        bounds: Rectangle,
+        layout: Layout<'_>,
         cursor: mouse::Cursor,
-    ) -> Option<shader::Action<Message>> {
+        _renderer: &Renderer,
+        _clipboard: &mut dyn iced_core::Clipboard,
+        shell: &mut Shell<'_, Message>,
+        _viewport: &Rectangle,
+    ) {
+        let bounds = layout.bounds();
+
+        let state = tree.state.downcast_mut::<State>();
+
         if !cursor.is_over(bounds) {
             state.reset();
-            return None;
+            return;
         }
 
         if let mouse::Cursor::Available(mouse_pos) = cursor {
@@ -183,13 +256,13 @@ impl<'a, Message: Clone, Handler: SurfaceHandler> shader::Program<Message>
             match (was_hovered, state.is_hovered) {
                 (false, true) => {
                     if let Some(on_enter) = &self.on_enter {
-                        return Some(shader::Action::publish(on_enter.clone()));
+                        shell.publish(on_enter.clone());
                     }
                 }
 
                 (true, false) => {
                     if let Some(on_exit) = &self.on_exit {
-                        return Some(shader::Action::publish(on_exit.clone()));
+                        shell.publish(on_exit.clone());
                     }
                 }
                 _ => (),
@@ -213,7 +286,7 @@ impl<'a, Message: Clone, Handler: SurfaceHandler> shader::Program<Message>
                     state.grabbing = true;
 
                     if let Some(on_grab) = &self.on_grab {
-                        return Some(shader::Action::publish(on_grab()));
+                        shell.publish(on_grab());
                     }
                 }
                 Event::Mouse(mouse::Event::ButtonReleased(mouse::Button::Middle)) => {
@@ -223,10 +296,10 @@ impl<'a, Message: Clone, Handler: SurfaceHandler> shader::Program<Message>
 
                 Event::Mouse(mouse::Event::ButtonPressed(mouse_button)) => {
                     if let Some(on_press) = &self.on_pressed {
-                        return Some(shader::Action::publish(on_press(
+                        shell.publish(on_press(
                             to_canvas_coords(bounds, mouse_pos, state.canvas_offset, state.zoom),
                             *mouse_button,
-                        )));
+                        ));
                     }
                 }
 
@@ -243,23 +316,23 @@ impl<'a, Message: Clone, Handler: SurfaceHandler> shader::Program<Message>
                     }
 
                     if let Some(on_move) = &self.on_move {
-                        return Some(shader::Action::publish(on_move(to_canvas_coords(
+                        shell.publish(on_move(to_canvas_coords(
                             bounds,
                             mouse_pos,
                             state.canvas_offset,
                             state.zoom,
-                        ))));
+                        )));
                     } else if state.grabbing {
-                        return Some(shader::Action::request_redraw());
+                        shell.request_redraw();
                     }
                 }
 
                 Event::Mouse(mouse::Event::ButtonReleased(mouse_button)) => {
                     if let Some(on_release) = &self.on_release {
-                        return Some(shader::Action::publish(on_release(
+                        shell.publish(on_release(
                             to_canvas_coords(bounds, mouse_pos, state.canvas_offset, state.zoom),
                             *mouse_button,
-                        )));
+                        ));
                     }
                 }
 
@@ -302,7 +375,7 @@ impl<'a, Message: Clone, Handler: SurfaceHandler> shader::Program<Message>
                             (mouse_pos.y - new_canvas_bounds.height * y_percent) - bounds.y,
                         );
 
-                        return Some(shader::Action::request_redraw());
+                        return shell.request_redraw();
                     }
 
                     mouse::ScrollDelta::Pixels { y, .. } => {
@@ -314,8 +387,18 @@ impl<'a, Message: Clone, Handler: SurfaceHandler> shader::Program<Message>
         } else {
             state.reset();
         };
+    }
+}
 
-        None
+impl<'a, Message, Theme, Renderer, Handler> From<TextureCanvas<'a, Message, Handler>>
+    for iced_core::Element<'a, Message, Theme, Renderer>
+where
+    Message: 'a + Clone,
+    Renderer: iced_wgpu::primitive::Renderer,
+    Handler: SurfaceHandler,
+{
+    fn from(value: TextureCanvas<'a, Message, Handler>) -> Self {
+        Element::new(value)
     }
 }
 

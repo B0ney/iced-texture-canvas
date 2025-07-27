@@ -36,7 +36,11 @@ struct ShaderApp {
 impl Default for ShaderApp {
     fn default() -> Self {
         let mut bitmap = iced_texture::bitmap(256, 192);
+        // bitmap.update(include_bytes!("out.rgba").as_slice());
+        bitmap.buffer_mut().fill(BLACK);
         bitmap.update(include_bytes!("out.rgba").as_slice());
+
+        // bitmap.buffer_mut().fill(0xffffffff);
 
         Self {
             pixmap: bitmap,
@@ -111,9 +115,9 @@ impl ShaderApp {
     fn view(&self) -> Element<Message> {
         column![
             container(
-                texture(&self.pixmap, &self.controls)
-                    .width(512)
-                    .height(Length::Fixed(512.0))
+                texture(&self.pixmap)
+                    // .width(512)
+                    // .height(Length::Fixed(512.0))
                     .mouse_interaction(mouse::Interaction::Crosshair)
                     .on_enter(Message::Entered)
                     .on_exit(Message::Exited)
