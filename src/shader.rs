@@ -15,8 +15,8 @@ use std::fmt::Debug;
 use std::sync::Weak;
 
 use iced_core::{
-    Border, Element, Event, Layout, Length, Point, Rectangle, Shell, Size, Widget, layout, mouse,
-    renderer, widget, window,
+    Border, Element, Event, Layout, Length, Point, Rectangle, Shadow, Shell, Size, Widget, layout,
+    mouse, renderer, widget, window,
 };
 use iced_wgpu::wgpu;
 use iced_widget::shader;
@@ -224,7 +224,11 @@ where
                         width: border_thickness,
                         radius: 0.0.into(),
                     },
-                    shadow: shadow,
+                    shadow: Shadow {
+                        color: shadow.color,
+                        offset: shadow.offset * scale,
+                        blur_radius: shadow.blur_radius * scale,
+                    },
                     snap: false,
                     ..Default::default()
                 },
