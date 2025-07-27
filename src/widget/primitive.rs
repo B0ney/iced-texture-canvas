@@ -18,14 +18,16 @@ pub struct Primitive<Buffer: Surface> {
     surface: Weak<Buffer>,
     offset: glam::Vec2,
     scale: f32,
+    generation: u64,
 }
 
 impl<Buffer: Surface> Primitive<Buffer> {
-    pub fn new(pixmap: Weak<Buffer>, offset: glam::Vec2, scale: f32) -> Self {
+    pub fn new(pixmap: Weak<Buffer>, offset: glam::Vec2, scale: f32, generation: u64) -> Self {
         Self {
             surface: pixmap,
             offset,
             scale,
+            generation,
         }
     }
 }
@@ -44,29 +46,34 @@ impl<Buffer: Surface> shader::Primitive for Primitive<Buffer> {
             return;
         };
 
-        let mut just_created = false;
+        let mut force_redraw = false;
+
         if !storage.has::<Pipeline>() {
-            just_created = true;
-            storage.store(Pipeline::new(device, format, &surface));
+            force_redraw = true;
+            storage.store(Pipeline::new(device, format, &surface, self.generation));
         }
 
         let pipeline = storage.get_mut::<Pipeline>().unwrap();
 
         let texture_size = pipeline.texture.size;
 
+        // TODO: Optimise this.
         if surface.width() != texture_size.width || surface.height() != texture_size.height {
-            *pipeline = Pipeline::new(device, format, &surface);
-            just_created = true;
+            force_redraw = true;
+            *pipeline = Pipeline::new(device, format, &surface, self.generation);
         }
 
-        let scale = self.scale;
+        if pipeline.generation != self.generation {
+            pipeline.generation = self.generation;
+            force_redraw = true;
+        }
 
         pipeline.uniform.upload(
             queue,
-            UniformsRaw::new(self.offset, scale, bounds.size(), surface.size()),
+            UniformsRaw::new(self.offset, self.scale, bounds.size(), surface.size()),
         );
 
-        if just_created {
+        if force_redraw {
             pipeline
                 .texture
                 .upload(queue, surface.width(), surface.height(), surface.data());

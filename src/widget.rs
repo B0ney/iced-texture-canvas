@@ -293,6 +293,7 @@ where
                     self.buffer.create_weak(),
                     state.canvas_offset,
                     state.scale.clamp(MIN_SCALE, MAX_SCALE),
+                    state.generation,
                 ),
             );
         });
@@ -505,13 +506,15 @@ where
 }
 
 /// TODO: move canvas offset and zoom to user state
-#[derive(Clone)]
 pub struct State {
     canvas_grab: Option<glam::Vec2>,
     grabbing: bool,
     canvas_offset: glam::Vec2,
     scale: f32,
     is_hovered: bool,
+    /// Used to force the shader pipeline to update the texture
+    /// if there's a mismatch.
+    generation: u64,
 }
 
 impl Default for State {
@@ -522,6 +525,7 @@ impl Default for State {
             canvas_offset: Default::default(),
             scale: 1.0,
             is_hovered: Default::default(),
+            generation: new_generation(),
         }
     }
 }
@@ -532,4 +536,12 @@ impl State {
         self.grabbing = false;
         self.canvas_grab = None;
     }
+}
+
+fn new_generation() -> u64 {
+    use std::sync::atomic::AtomicU64;
+
+    static GENERATION: AtomicU64 = AtomicU64::new(0);
+
+    GENERATION.fetch_add(1, std::sync::atomic::Ordering::Relaxed)
 }
