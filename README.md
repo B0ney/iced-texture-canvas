@@ -10,7 +10,7 @@ And to view that buffer, you use `iced_texture::texture`.
 
 
 ```rust
-use iced_texture::{bitmap, texture};
+use iced_texture_canvas::{bitmap, texture_canvas};
 
 // create your bitmap image
 let mut bitmap = bitmap(500, 500);
@@ -20,7 +20,7 @@ bitmap.buffer_mut().fill(0xffffffff);
 
 
 // display it in your view method
-texture(&bitmap)
+texture_canvas(&bitmap)
 
 ```
 
