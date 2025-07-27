@@ -175,7 +175,7 @@ where
         self
     }
 
-    /// Set the message to emit when the mouse leave the image in the [`TextureCanvas`].
+    /// Set the message to emit when the mouse leaves the image in the [`TextureCanvas`].
     ///
     /// This requires that `Message` is [`Clone`].
     ///
