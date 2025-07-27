@@ -1,7 +1,10 @@
 pub mod pipeline;
+pub mod style;
 pub mod surface;
 pub mod texture;
 pub mod uniforms;
+
+use style::{Catalog, Status, Style, StyleFn};
 
 use pipeline::Pipeline;
 use surface::{Surface, SurfaceHandler};
@@ -12,29 +15,34 @@ use std::fmt::Debug;
 use std::sync::Weak;
 
 use iced_core::{
-    Background, Border, Color, Element, Event, Layout, Length, Point, Rectangle, Shadow, Shell,
-    Size, Widget, layout, mouse, renderer, widget, window,
+    Border, Element, Event, Layout, Length, Point, Rectangle, Shell, Size, Widget, layout, mouse,
+    renderer, widget, window,
 };
 use iced_wgpu::wgpu;
 use iced_widget::shader;
 
 const MIN_SCALE: f32 = 1.0; //0.05;
 
-pub fn texture<'a, Message: 'a + Clone, Handler: SurfaceHandler>(
+pub fn texture<'a, Message, Theme, Handler>(
     buffer: &'a Handler,
-) -> TextureCanvas<'a, Message, Handler> {
+) -> TextureCanvas<'a, Message, Theme, Handler>
+where
+    Message: 'a + Clone,
+    Theme: Catalog,
+    Handler: SurfaceHandler,
+{
     TextureCanvas::new(buffer)
 }
 
-pub struct TextureCanvas<'a, Message, Handler> {
+pub struct TextureCanvas<'a, Message, Theme, Handler>
+where
+    Theme: Catalog,
+{
     buffer: &'a Handler,
     width: Length,
     height: Length,
 
-    background: Color,
-    shadow: Shadow,
-    outline_color: Color,
-    outline_thickness: f32,
+    class: Theme::Class<'a>,
 
     on_grab: Option<Box<dyn Fn() -> Message + 'a>>,
     on_zoom: Option<Box<dyn Fn(f32) -> Message + 'a>>,
@@ -47,14 +55,15 @@ pub struct TextureCanvas<'a, Message, Handler> {
     interaction: Option<mouse::Interaction>,
 }
 
-impl<'a, Message: Clone, Handler: SurfaceHandler> TextureCanvas<'a, Message, Handler> {
+impl<'a, Message, Theme, Handler> TextureCanvas<'a, Message, Theme, Handler>
+where
+    Message: Clone,
+    Theme: style::Catalog,
+    Handler: SurfaceHandler,
+{
     pub fn new(buffer: &'a Handler) -> Self {
         Self {
             buffer,
-            background: Color::TRANSPARENT.into(),
-            shadow: Shadow::default(),
-            outline_color: Color::BLACK,
-            outline_thickness: 1.0,
             width: Length::Fill,
             height: Length::Fill,
             on_grab: None,
@@ -65,6 +74,7 @@ impl<'a, Message: Clone, Handler: SurfaceHandler> TextureCanvas<'a, Message, Han
             on_enter: None,
             on_exit: None,
             interaction: None,
+            class: Theme::default(),
         }
     }
 
@@ -80,27 +90,18 @@ impl<'a, Message: Clone, Handler: SurfaceHandler> TextureCanvas<'a, Message, Han
         self
     }
 
-    /// Set the `background` color of the viewed image.
-    pub fn background(mut self, background: impl Into<Option<Color>>) -> Self {
-        self.background = background.into().unwrap_or(Color::TRANSPARENT);
+    #[must_use]
+    pub fn style(mut self, style: impl Fn(&Theme, Status) -> Style + 'a) -> Self
+    where
+        Theme::Class<'a>: From<StyleFn<'a, Theme>>,
+    {
+        self.class = (Box::new(style) as StyleFn<'a, Theme>).into();
         self
     }
 
-    /// Set the `outline` color of the viewed image.
-    pub fn outline_color(mut self, outline_color: impl Into<Option<Color>>) -> Self {
-        self.outline_color = outline_color.into().unwrap_or(Color::TRANSPARENT);
-        self
-    }
-
-    /// Set the `outline` thickness of the viewed image.
-    pub fn outline_thickness(mut self, outline_thickness: f32) -> Self {
-        self.outline_thickness = outline_thickness;
-        self
-    }
-
-    /// Set the `shadow` property of the viewed image.
-    pub fn shadow(mut self, shadow: Shadow) -> Self {
-        self.shadow = shadow;
+    #[must_use]
+    pub fn class(mut self, class: impl Into<Theme::Class<'a>>) -> Self {
+        self.class = class.into();
         self
     }
 
@@ -146,9 +147,10 @@ impl<'a, Message: Clone, Handler: SurfaceHandler> TextureCanvas<'a, Message, Han
 }
 
 impl<'a, Message: Clone, Theme, Renderer, Handler: SurfaceHandler> Widget<Message, Theme, Renderer>
-    for TextureCanvas<'a, Message, Handler>
+    for TextureCanvas<'a, Message, Theme, Handler>
 where
     Renderer: iced_wgpu::primitive::Renderer,
+    Theme: Catalog,
 {
     fn tag(&self) -> widget::tree::Tag {
         struct Tag<T>(T);
@@ -179,7 +181,7 @@ where
         &self,
         tree: &widget::Tree,
         renderer: &mut Renderer,
-        _theme: &Theme,
+        theme: &Theme,
         _style: &renderer::Style,
         layout: Layout<'_>,
         _cursor_position: mouse::Cursor,
@@ -194,28 +196,39 @@ where
         let texture_width = self.buffer.width() as f32 * scale;
         let texture_height = self.buffer.height() as f32 * scale;
 
-        let thickness = self.outline_thickness;
+        let style::Style {
+            background,
+            border_color,
+            border_thickness,
+            shadow,
+        } = theme.style(
+            &self.class,
+            match state.is_hovered {
+                true => style::Status::Hovered,
+                false => style::Status::None,
+            },
+        );
 
         renderer.with_layer(bounds, |renderer| {
             // Draw the outlines, shadows and backdrop.
             renderer.fill_quad(
                 renderer::Quad {
                     bounds: Rectangle {
-                        x: x - thickness,
-                        y: y - thickness,
-                        width: texture_width + (thickness * 2.),
-                        height: texture_height + (thickness * 2.),
+                        x: x - border_thickness,
+                        y: y - border_thickness,
+                        width: texture_width + (border_thickness * 2.),
+                        height: texture_height + (border_thickness * 2.),
                     },
                     border: Border {
-                        color: self.outline_color,
-                        width: thickness,
+                        color: border_color,
+                        width: border_thickness,
                         radius: 0.0.into(),
                     },
-                    shadow: self.shadow,
+                    shadow: shadow,
                     snap: false,
                     ..Default::default()
                 },
-                self.background,
+                background,
             );
 
             // Draw the image.
@@ -421,14 +434,15 @@ where
     }
 }
 
-impl<'a, Message, Theme, Renderer, Handler> From<TextureCanvas<'a, Message, Handler>>
+impl<'a, Message, Theme, Renderer, Handler> From<TextureCanvas<'a, Message, Theme, Handler>>
     for iced_core::Element<'a, Message, Theme, Renderer>
 where
-    Message: 'a + Clone,
+    Message: Clone + 'a,
+    Theme: Catalog + 'a,
     Renderer: iced_wgpu::primitive::Renderer,
     Handler: SurfaceHandler,
 {
-    fn from(value: TextureCanvas<'a, Message, Handler>) -> Self {
+    fn from(value: TextureCanvas<'a, Message, Theme, Handler>) -> Self {
         Element::new(value)
     }
 }
