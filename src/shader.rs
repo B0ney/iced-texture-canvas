@@ -291,22 +291,24 @@ where
                 height: self.buffer.height() as f32 * state.scale,
             };
 
-            let was_hovered = state.is_hovered;
-            state.is_hovered = cursor.is_over(canvas_bounds);
+            if !state.grabbing {
+                let was_hovered = state.is_hovered;
+                state.is_hovered = cursor.is_over(canvas_bounds);
 
-            match (was_hovered, state.is_hovered) {
-                (false, true) => {
-                    if let Some(on_enter) = &self.on_enter {
-                        shell.publish(on_enter.clone());
+                match (was_hovered, state.is_hovered) {
+                    (false, true) => {
+                        if let Some(on_enter) = &self.on_enter {
+                            shell.publish(on_enter.clone());
+                        }
                     }
-                }
 
-                (true, false) => {
-                    if let Some(on_exit) = &self.on_exit {
-                        shell.publish(on_exit.clone());
+                    (true, false) => {
+                        if let Some(on_exit) = &self.on_exit {
+                            shell.publish(on_exit.clone());
+                        }
                     }
+                    _ => (),
                 }
-                _ => (),
             }
 
             fn to_canvas_coords(
