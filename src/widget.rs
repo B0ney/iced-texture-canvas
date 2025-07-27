@@ -534,17 +534,3 @@ impl State {
         self.canvas_grab = None;
     }
 }
-#[derive(Debug, Clone, Copy)]
-pub struct Controls {
-    pub scale: f32,
-    pub center: Vec2,
-}
-
-impl Default for Controls {
-    fn default() -> Self {
-        Self {
-            scale: 1.0,
-            center: Default::default(),
-        }
-    }
-}
