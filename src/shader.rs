@@ -22,6 +22,7 @@ use iced_wgpu::wgpu;
 use iced_widget::shader;
 
 const MIN_SCALE: f32 = 1.0; //0.05;
+const MAX_SCALE: f32 = 1600.0;
 
 pub fn texture<'a, Message, Theme, Handler>(
     buffer: &'a Handler,
@@ -241,7 +242,7 @@ where
                 Primitive::new(
                     self.buffer.create_weak(),
                     state.canvas_offset,
-                    state.scale.clamp(MIN_SCALE, 100.),
+                    state.scale.clamp(MIN_SCALE, MAX_SCALE),
                 ),
             );
         });
@@ -406,7 +407,7 @@ where
                         //     *y
                         // };
 
-                        state.scale = (state.scale + y).clamp(MIN_SCALE, 10.);
+                        state.scale = (state.scale + y).clamp(MIN_SCALE, MAX_SCALE);
 
                         // recalculate the bounds of the canvas
                         let new_canvas_bounds = Rectangle {
