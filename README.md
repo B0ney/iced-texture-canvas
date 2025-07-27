@@ -1,4 +1,4 @@
-# Iced-Texture-Canvas (WIP)
+# Iced Texture Canvas (WIP)
 
 A widget similar to a [`image::Viewer`](https://docs.iced.rs/iced/widget/image/viewer/index.html) that lets you view bitmap data but with added enhancements.
 
@@ -28,6 +28,12 @@ The api also takes a few inspirations from [`MouseArea`](https://docs.iced.rs/ic
 <!-- 
 ## Advanced Usage
 ### SurfaceHandler and Surface -->
+
+# Run Example
+
+```
+cargo run -p demo
+```
 
 
 # Todos
