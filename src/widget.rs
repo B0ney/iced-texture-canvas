@@ -84,6 +84,7 @@ where
         self
     }
 
+    /// Set the `style` of the image displayed by the [`TextureCanvas`].
     #[must_use]
     pub fn style(mut self, style: impl Fn(&Theme, Status) -> Style + 'a) -> Self
     where
@@ -93,42 +94,65 @@ where
         self
     }
 
+    /// Set the style `class` of the image displayed by the [`TextureCanvas`].
     #[must_use]
     pub fn class(mut self, class: impl Into<Theme::Class<'a>>) -> Self {
         self.class = class.into();
         self
     }
 
+    /// Set the message that will be produced when the image is panned.
     pub fn on_drag(mut self, on_drag: impl Fn() -> Message + 'a) -> Self {
         self.on_grab = Some(Box::new(on_drag));
         self
     }
 
+    /// Set the message that will be produced when the image is zoomed.
     pub fn on_zoom(mut self, on_zoom: impl Fn(f32) -> Message + 'a) -> Self {
         self.on_zoom = Some(Box::new(on_zoom));
         self
     }
 
+    /// Set the message to emit when the [`TextureCanvas`] area is pressed.
+    ///
+    /// The [`Point`] it produces is relative to the position of the displayed image.
     pub fn on_press(mut self, on_press: impl Fn(Point, mouse::Button) -> Message + 'a) -> Self {
         self.on_pressed = Some(Box::new(on_press));
         self
     }
 
+    /// Set the message to emit the mouse moves over the [`TextureCanvas`].
+    ///
+    /// The [`Point`] it produces is relative to the position of the displayed image.
     pub fn on_move(mut self, on_move: impl Fn(Point) -> Message + 'a) -> Self {
         self.on_move = Some(Box::new(on_move));
         self
     }
 
+    /// Set the message to emit when the mouse clicks on the [`TextureCanvas`].
+    ///
+    /// The [`Point`] it produces is relative to the position of the displayed image.
     pub fn on_release(mut self, on_release: impl Fn(Point, mouse::Button) -> Message + 'a) -> Self {
         self.on_release = Some(Box::new(on_release));
         self
     }
 
+    /// Set the message to emit when the mouse hovers over the image in the [`TextureCanvas`].
+    ///
+    /// This is analogous to [`TextureCanvas::on_enter`], but using a closure to produce the message.
+    ///
+    /// This closure will only be called when the image in the [`TextureCanvas`] is actually entered and,
+    /// therefore, this method is useful to reduce overhead if creating the resulting message is slow.
     pub fn on_enter_with(mut self, on_exit: impl Fn() -> Message + 'a) -> Self {
         self.on_exit = Some(Box::new(on_exit));
         self
     }
 
+    /// Set the message to emit when the mouse hovers over the image in the [`TextureCanvas`].
+    ///
+    /// This requires that `Message` is [`Clone`].
+    ///
+    /// If you can't make your `Message` [`Clone`], use [`TextureCanvas::on_enter_with`] instead.
     pub fn on_enter(mut self, on_enter: impl Into<Option<Message>>) -> Self
     where
         Message: Clone + 'a,
@@ -140,11 +164,22 @@ where
         self
     }
 
+    /// Set the message to emit when the mouse leaves the image in the [`TextureCanvas`].
+    ///
+    /// This is analogous to [`TextureCanvas::on_exit`], but using a closure to produce the message.
+    ///
+    /// This closure will only be called when the mouse actually leaves the image in the [`TextureCanvas`] and,
+    /// therefore, this method is useful to reduce overhead if creating the resulting message is slow.
     pub fn on_exit_with(mut self, on_exit: impl Fn() -> Message + 'a) -> Self {
         self.on_exit = Some(Box::new(on_exit));
         self
     }
 
+    /// Set the message to emit when the mouse leave the image in the [`TextureCanvas`].
+    ///
+    /// This requires that `Message` is [`Clone`].
+    ///
+    /// If you can't make your `Message` [`Clone`], use [`TextureCanvas::on_exit_with`] instead.
     pub fn on_exit(mut self, on_exit: impl Into<Option<Message>>) -> Self
     where
         Message: Clone + 'a,
@@ -155,6 +190,7 @@ where
         self
     }
 
+    /// Set the mouse icon when the mouse hovers over the image in the [`TextureCanvas`].
     pub fn mouse_interaction(mut self, mouse_interaction: mouse::Interaction) -> Self {
         self.interaction = Some(mouse_interaction);
         self
