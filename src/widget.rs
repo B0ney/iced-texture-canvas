@@ -309,11 +309,13 @@ where
     ) -> mouse::Interaction {
         let state: &State = tree.state.downcast_ref::<State>();
 
-        if !state.is_hovered {
-            return mouse::Interaction::None;
+        if state.grabbing {
+            mouse::Interaction::Grabbing
+        } else if state.is_hovered {
+            self.interaction.unwrap_or_default()
+        } else {
+            mouse::Interaction::None
         }
-
-        self.interaction.unwrap_or_default()
     }
 
     fn update(
