@@ -333,11 +333,14 @@ where
 
         let state = tree.state.downcast_mut::<State>();
 
+        let image_width = self.buffer.width() as f32;
+        let image_height = self.buffer.width() as f32;
+
         if state.should_center {
             state.should_center = false;
             state.canvas_offset = Vec2::new(
-                bounds.center_x() - (self.buffer.width() / 2) as f32,
-                bounds.center_y() - (self.buffer.height() / 2) as f32,
+                bounds.center_x() - image_width / 2.,
+                bounds.center_y() - image_height / 2.,
             );
         }
 
@@ -353,8 +356,8 @@ where
             let canvas_bounds = Rectangle {
                 x: x + bounds.x,
                 y: y + bounds.y,
-                width: self.buffer.width() as f32 * state.scale,
-                height: self.buffer.height() as f32 * state.scale,
+                width: image_width * state.scale,
+                height: image_height * state.scale,
             };
 
             if !state.grabbing {
@@ -416,11 +419,12 @@ where
                     let mouse_pos = *position;
 
                     if state.grabbing {
+                        let mouse_pos = Vec2::new(mouse_pos.x, mouse_pos.y);
+
                         if let Some(pos) = state.canvas_grab {
-                            state.canvas_offset = Vec2::new(mouse_pos.x, mouse_pos.y) - pos
+                            state.canvas_offset = mouse_pos - pos
                         } else {
-                            let position = Vec2::new(mouse_pos.x, mouse_pos.y);
-                            state.canvas_grab = Some(position - state.canvas_offset);
+                            state.canvas_grab = Some(mouse_pos - state.canvas_offset);
                         }
                     }
 
@@ -458,8 +462,8 @@ where
                         let point =
                             to_canvas_coords(bounds, mouse_pos, state.canvas_offset, state.scale);
 
-                        let x_percent = (point.x / canvas_bounds.width) * state.scale;
-                        let y_percent = (point.y / canvas_bounds.height) * state.scale;
+                        let x_percent = point.x / image_width;
+                        let y_percent = point.y / image_height;
 
                         // TODO
                         // let y = if state.zoom < 1. {
@@ -471,17 +475,13 @@ where
                         state.scale = (state.scale + y).clamp(MIN_SCALE, MAX_SCALE);
 
                         // recalculate the bounds of the canvas
-                        let new_canvas_bounds = Rectangle {
-                            x: x + bounds.x,
-                            y: y + bounds.y,
-                            width: self.buffer.width() as f32 * state.scale,
-                            height: self.buffer.height() as f32 * state.scale,
-                        };
+                        let new_canvas_width = image_width * state.scale;
+                        let new_canvas_height = image_height * state.scale;
 
                         // move the canvas offset to satisfy the percentages.
                         state.canvas_offset = Vec2::new(
-                            (mouse_pos.x - new_canvas_bounds.width * x_percent) - bounds.x,
-                            (mouse_pos.y - new_canvas_bounds.height * y_percent) - bounds.y,
+                            (mouse_pos.x - new_canvas_width * x_percent) - bounds.x,
+                            (mouse_pos.y - new_canvas_height * y_percent) - bounds.y,
                         );
 
                         shell.request_redraw();
