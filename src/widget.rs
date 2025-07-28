@@ -344,13 +344,8 @@ where
             );
         }
 
-        if !cursor.is_over(bounds) {
-            state.reset();
-            return;
-        }
-
         // TODO: move to inner
-        if let mouse::Cursor::Available(mouse_pos) = cursor {
+        if let Some(mouse_pos) = cursor.position() {
             let glam::Vec2 { x, y } = state.canvas_offset;
 
             let canvas_bounds = Rectangle {
@@ -362,7 +357,7 @@ where
 
             if !state.grabbing {
                 let was_hovered = state.is_hovered;
-                state.is_hovered = cursor.is_over(canvas_bounds);
+                state.is_hovered = cursor.is_over(canvas_bounds) && cursor.is_over(bounds);
 
                 match (was_hovered, state.is_hovered) {
                     (false, true) => {
@@ -395,6 +390,10 @@ where
 
             match event {
                 Event::Mouse(mouse::Event::ButtonPressed(mouse::Button::Middle)) => {
+                    if !cursor.is_over(bounds) || cursor.is_levitating() {
+                        return;
+                    }
+
                     state.grabbing = true;
 
                     if let Some(on_grab) = &self.on_grab {
@@ -407,8 +406,20 @@ where
                 }
 
                 Event::Mouse(mouse::Event::ButtonPressed(mouse_button)) => {
+                    if !cursor.is_over(bounds) || cursor.is_levitating() {
+                        return;
+                    }
+
                     if let Some(on_press) = &self.on_pressed {
                         shell.publish(on_press(
+                            to_canvas_coords(bounds, mouse_pos, state.canvas_offset, state.scale),
+                            *mouse_button,
+                        ));
+                    }
+                }
+                Event::Mouse(mouse::Event::ButtonReleased(mouse_button)) => {
+                    if let Some(on_release) = &self.on_release {
+                        shell.publish(on_release(
                             to_canvas_coords(bounds, mouse_pos, state.canvas_offset, state.scale),
                             *mouse_button,
                         ));
@@ -426,31 +437,29 @@ where
                         } else {
                             state.canvas_grab = Some(mouse_pos - state.canvas_offset);
                         }
+
+                        shell.request_redraw();
+                        // shell.capture_event();
                     }
 
                     if let Some(on_move) = &self.on_move {
-                        shell.publish(on_move(to_canvas_coords(
-                            bounds,
-                            mouse_pos,
-                            state.canvas_offset,
-                            state.scale,
-                        )));
-                    } else if state.grabbing {
-                        shell.request_redraw();
-                    }
-                }
-
-                Event::Mouse(mouse::Event::ButtonReleased(mouse_button)) => {
-                    if let Some(on_release) = &self.on_release {
-                        shell.publish(on_release(
-                            to_canvas_coords(bounds, mouse_pos, state.canvas_offset, state.scale),
-                            *mouse_button,
-                        ));
+                        if cursor.is_over(bounds) {
+                            shell.publish(on_move(to_canvas_coords(
+                                bounds,
+                                mouse_pos,
+                                state.canvas_offset,
+                                state.scale,
+                            )));
+                        }
                     }
                 }
 
                 Event::Mouse(mouse::Event::WheelScrolled { delta }) => match delta {
-                    mouse::ScrollDelta::Lines { x, y } => {
+                    mouse::ScrollDelta::Lines { y, .. } => {
+                        if !cursor.is_over(bounds) || cursor.is_levitating() {
+                            return;
+                        }
+
                         // align the canvas to the mouse position when scaling.
                         // first we calculate what % the cursor is from the canvas on both axes.
                         // 0% = far left, or top
@@ -496,7 +505,8 @@ where
                 }
                 _ => (),
             }
-        } else {
+        } else if cursor == mouse::Cursor::Unavailable {
+            println!("busy");
             state.reset();
         };
     }
