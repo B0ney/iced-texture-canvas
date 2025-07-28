@@ -331,6 +331,14 @@ where
 
         let state = tree.state.downcast_mut::<State>();
 
+        if state.should_center {
+            state.should_center = false;
+            state.canvas_offset = Vec2::new(
+                bounds.center_x() - (self.buffer.width() / 2) as f32,
+                bounds.center_y() - (self.buffer.height() / 2) as f32,
+            );
+        }
+
         if !cursor.is_over(bounds) {
             state.reset();
             return;
@@ -515,6 +523,7 @@ pub struct State {
     /// Used to force the shader pipeline to update the texture
     /// if there's a mismatch.
     generation: u64,
+    should_center: bool,
 }
 
 impl Default for State {
@@ -526,6 +535,7 @@ impl Default for State {
             scale: 1.0,
             is_hovered: Default::default(),
             generation: new_generation(),
+            should_center: true,
         }
     }
 }
