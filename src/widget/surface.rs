@@ -22,6 +22,14 @@ pub trait SurfaceHandler {
     fn create_weak(&self) -> Weak<Self::Surface>;
 }
 
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub enum Id {
+    None,
+    Static(&'static str),
+    Shared(Arc<str>),
+    Id(u64),
+}
+
 /// RGBA image data stored on the CPU to be uploaded to the GPU.
 pub trait Surface: Send + Sync + Debug + 'static {
     /// The width of the [`Surface`]
@@ -42,6 +50,10 @@ pub trait Surface: Send + Sync + Debug + 'static {
     ///
     /// The data provided in update will be uploaded to the GPU.
     fn run_if_modified(&self, update: impl FnOnce(u32, u32, &[u8]));
+
+    fn id(&self) -> Id {
+        Id::None
+    }
 }
 
 impl<T: Surface> Surface for Arc<T> {
