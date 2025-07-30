@@ -1,22 +1,29 @@
+pub mod operation;
 mod primitive;
 pub mod style;
 pub mod surface;
 
 use primitive::Primitive;
 use style::{Catalog, Status, Style, StyleFn};
-
 use surface::{Surface, SurfaceHandler};
-
-use glam::Vec2;
 
 use iced_core::{
     Border, Element, Event, Layout, Length, Point, Rectangle, Shadow, Shell, Size, Widget, layout,
-    mouse, renderer, widget, window,
+    mouse, renderer,
+    widget::{self, Id},
+    window,
+};
+use iced_widget::runtime::{
+    Action,
+    task::{self, Task},
 };
 
-const MIN_SCALE: f32 = 1.0; //0.05;
-const MAX_SCALE: f32 = 1600.0;
+const MIN_SCALE: f32 = 1.0; //0.05; // TODO
+const MAX_SCALE: f32 = 64.0; // 6,400%
 
+/// Create a new [`TextureCanvas`] with the given [`SurfaceHandler`].
+///
+/// You can use the provided [`Bitmap`](crate::Bitmap).
 pub fn texture_canvas<'a, Message, Theme, Handler>(
     buffer: &'a Handler,
 ) -> TextureCanvas<'a, Message, Theme, Handler>
@@ -28,6 +35,20 @@ where
     TextureCanvas::new(buffer)
 }
 
+/// A [`Task`] that centers the image in the [`TextureCanvas`] with the given [`Id`].
+///
+/// This requires that you also [`set the id`](TextureCanvas::id) of the [`TextureCanvas`].
+pub fn center_image<Message>(id: impl Into<Id>) -> Task<Message> {
+    task::effect(Action::widget(operation::center_image_raw(id.into())))
+}
+
+/// A [`Task`] that scales the image in the [`TextureCanvas`] with the given [`Id`].
+///
+/// This requires that you also [`set the id`](TextureCanvas::id) of the [`TextureCanvas`].
+pub fn scale_image<Message>(id: impl Into<Id>, scale: f32) -> Task<Message> {
+    task::effect(Action::widget(operation::scale_image_raw(id.into(), scale)))
+}
+
 pub struct TextureCanvas<'a, Message, Theme, Handler>
 where
     Theme: Catalog,
@@ -37,6 +58,7 @@ where
     height: Length,
 
     class: Theme::Class<'a>,
+    id: Option<Id>,
 
     on_grab: Option<Box<dyn Fn() -> Message + 'a>>,
     on_zoom: Option<Box<dyn Fn(f32) -> Message + 'a>>,
@@ -54,6 +76,9 @@ where
     Theme: style::Catalog,
     Handler: SurfaceHandler,
 {
+    /// Create a new [`TextureCanvas`] with the given [`SurfaceHandler`].
+    ///
+    /// You can use the provided [`Bitmap`](crate::Bitmap).
     pub fn new(buffer: &'a Handler) -> Self {
         Self {
             buffer,
@@ -68,6 +93,7 @@ where
             on_exit: None,
             interaction: None,
             class: Theme::default(),
+            id: None,
         }
     }
 
@@ -106,7 +132,7 @@ where
         self
     }
 
-    /// Set the message that will be produced when the image is zoomed.
+    /// Set the message to emit when the image has been zoomed in/out.
     pub fn on_zoom(mut self, on_zoom: impl Fn(f32) -> Message + 'a) -> Self {
         self.on_zoom = Some(Box::new(on_zoom));
         self
@@ -194,6 +220,15 @@ where
         self.interaction = Some(mouse_interaction);
         self
     }
+
+    /// Set the [`Id`] of the [`TextureCanvas`].
+    ///
+    /// You will need to do this if you need to manually
+    /// [`scale`](scale_image)/[`center`](center_image) the contained image.
+    pub fn id(mut self, id: impl Into<Id>) -> Self {
+        self.id = Some(id.into());
+        self
+    }
 }
 
 impl<'a, Message, Theme, Renderer, Handler> Widget<Message, Theme, Renderer>
@@ -241,7 +276,7 @@ where
         let bounds = layout.bounds();
         let state = tree.state.downcast_ref::<State>();
 
-        let Vec2 { x, y } = state.canvas_offset;
+        let glam::Vec2 { x, y } = state.canvas_offset;
         let scale = state.scale;
 
         let texture_width = self.buffer.width() as f32 * scale;
@@ -334,14 +369,41 @@ where
         let state = tree.state.downcast_mut::<State>();
 
         let image_width = self.buffer.width() as f32;
-        let image_height = self.buffer.width() as f32;
+        let image_height = self.buffer.height() as f32;
 
         if state.should_center {
             state.should_center = false;
-            state.canvas_offset = Vec2::new(
-                bounds.center_x() - image_width / 2.,
-                bounds.center_y() - image_height / 2.,
+            state.canvas_offset = glam::Vec2::new(
+                bounds.center_x() - (image_width * state.scale) / 2.,
+                bounds.center_y() - (image_height * state.scale) / 2.,
             );
+        }
+
+        // TODO: refactor
+        if let Some(new_scale) = state.suggested_scale.take() {
+            let center = bounds.center();
+
+            let point = to_canvas_coords(bounds, center, state.canvas_offset, state.scale);
+
+            let x_percent = point.x / image_width;
+            let y_percent = point.y / image_height;
+
+            state.scale = (new_scale).clamp(MIN_SCALE, MAX_SCALE);
+
+            // recalculate the bounds of the canvas
+            let new_canvas_width = image_width * state.scale;
+            let new_canvas_height = image_height * state.scale;
+
+            // move the canvas offset to satisfy the percentages.
+            state.canvas_offset = glam::Vec2::new(
+                (center.x - new_canvas_width * x_percent) - bounds.x,
+                (center.y - new_canvas_height * y_percent) - bounds.y,
+            );
+
+            shell.request_redraw();
+            if let Some(on_zoom) = &self.on_zoom {
+                shell.publish(on_zoom(state.scale));
+            };
         }
 
         if !cursor.is_over(bounds) {
@@ -380,19 +442,6 @@ where
                 }
             }
 
-            fn to_canvas_coords(
-                bounds: Rectangle,
-                mouse: Point,
-                offset: Vec2,
-                scale: f32,
-            ) -> Point {
-                let mouse = glam::vec2(mouse.x, mouse.y);
-                let bounds_offset = glam::vec2(bounds.x, bounds.y) / scale;
-                let Vec2 { x, y } = (mouse - offset) / scale - bounds_offset;
-
-                Point { x, y }
-            }
-
             match event {
                 Event::Mouse(mouse::Event::ButtonPressed(mouse::Button::Middle)) => {
                     state.grabbing = true;
@@ -419,7 +468,7 @@ where
                     let mouse_pos = *position;
 
                     if state.grabbing {
-                        let mouse_pos = Vec2::new(mouse_pos.x, mouse_pos.y);
+                        let mouse_pos = glam::Vec2::new(mouse_pos.x, mouse_pos.y);
 
                         if let Some(pos) = state.canvas_grab {
                             state.canvas_offset = mouse_pos - pos
@@ -450,7 +499,10 @@ where
                 }
 
                 Event::Mouse(mouse::Event::WheelScrolled { delta }) => match delta {
-                    mouse::ScrollDelta::Lines { x, y } => {
+                    mouse::ScrollDelta::Lines { y, .. } => {
+                        if state.grabbing {
+                            return;
+                        }
                         // align the canvas to the mouse position when scaling.
                         // first we calculate what % the cursor is from the canvas on both axes.
                         // 0% = far left, or top
@@ -479,12 +531,16 @@ where
                         let new_canvas_height = image_height * state.scale;
 
                         // move the canvas offset to satisfy the percentages.
-                        state.canvas_offset = Vec2::new(
+                        state.canvas_offset = glam::Vec2::new(
                             (mouse_pos.x - new_canvas_width * x_percent) - bounds.x,
                             (mouse_pos.y - new_canvas_height * y_percent) - bounds.y,
                         );
 
                         shell.request_redraw();
+
+                        if let Some(on_zoom) = &self.on_zoom {
+                            shell.publish(on_zoom(state.scale));
+                        };
                     }
 
                     mouse::ScrollDelta::Pixels { y, .. } => {
@@ -499,6 +555,17 @@ where
         } else {
             state.reset();
         };
+    }
+
+    fn operate(
+        &self,
+        tree: &mut widget::Tree,
+        layout: Layout<'_>,
+        _renderer: &Renderer,
+        operation: &mut dyn widget::Operation,
+    ) {
+        let state: &mut State = tree.state.downcast_mut();
+        operation.custom(self.id.as_ref(), layout.bounds(), state);
     }
 }
 
@@ -515,17 +582,25 @@ where
     }
 }
 
-/// TODO: move canvas offset and zoom to user state
-pub struct State {
+fn to_canvas_coords(bounds: Rectangle, mouse: Point, offset: glam::Vec2, scale: f32) -> Point {
+    let mouse = glam::vec2(mouse.x, mouse.y);
+    let bounds_offset = glam::vec2(bounds.x, bounds.y) / scale;
+    let glam::Vec2 { x, y } = (mouse - offset) / scale - bounds_offset;
+
+    Point { x, y }
+}
+
+pub(crate) struct State {
     canvas_grab: Option<glam::Vec2>,
     grabbing: bool,
     canvas_offset: glam::Vec2,
-    scale: f32,
+    pub scale: f32,
     is_hovered: bool,
     /// Used to force the shader pipeline to update the texture
     /// if there's a mismatch.
     generation: u64,
-    should_center: bool,
+    pub should_center: bool,
+    pub suggested_scale: Option<f32>,
 }
 
 impl Default for State {
@@ -538,6 +613,7 @@ impl Default for State {
             is_hovered: Default::default(),
             generation: new_generation(),
             should_center: true,
+            suggested_scale: None,
         }
     }
 }

@@ -1,8 +1,8 @@
 use iced::alignment::Horizontal;
-use iced::widget::{button, column, container, horizontal_rule};
-use iced::{Color, Element, Point, mouse};
+use iced::widget::{button, column, container, horizontal_rule, slider};
+use iced::{Color, Element, Point, Task, mouse};
 
-use iced_texture_canvas::{Bitmap, bitmap, texture_canvas};
+use iced_texture_canvas::{Bitmap, center_image, scale_image, texture_canvas};
 
 fn main() -> iced::Result {
     iced::application(BasicPaint::default, BasicPaint::update, BasicPaint::view)
@@ -17,6 +17,9 @@ enum Message {
     StartDraw(Point, mouse::Button),
     Move(Point),
     EndDraw(Point, mouse::Button),
+    CenterImage,
+    SetScale(f32),
+    Zoomed(f32),
 }
 
 const WHITE: u32 = 0xffffffff;
@@ -28,6 +31,7 @@ struct BasicPaint {
     size: u8,
     drawing: bool,
     pending: Pending,
+    scale: f32,
 }
 
 impl Default for BasicPaint {
@@ -35,9 +39,10 @@ impl Default for BasicPaint {
         Self {
             bitmap: load_image(),
             color: WHITE,
-            size: 5,
+            size: 2,
             drawing: false,
             pending: Pending::None,
+            scale: 1.0,
         }
     }
 }
@@ -47,21 +52,20 @@ impl BasicPaint {
         "Basic Paint App".into()
     }
 
-    fn update(&mut self, msg: Message) {
+    fn update(&mut self, msg: Message) -> Task<Message> {
         match msg {
             Message::White => self.color = WHITE,
             Message::Black => self.color = BLACK,
             Message::StartDraw(point, button) => {
-                self.pending.update(point);
-
                 if button == mouse::Button::Left {
+                    self.pending.update(point);
                     self.drawing = true
                 }
             }
             Message::Move(point) => {
-                self.pending.update(point);
-
                 if self.drawing {
+                    self.pending.update(point);
+
                     if let Pending::Line(p1, p2) = self.pending {
                         draw_line(
                             &mut self.bitmap,
@@ -77,33 +81,41 @@ impl BasicPaint {
                 }
             }
             Message::EndDraw(last_point, button) => {
-                let was_drawing = self.drawing;
-
                 if button == mouse::Button::Left {
-                    self.drawing = false
-                }
+                    let was_drawing = self.drawing;
+                    self.drawing = false;
 
-                if was_drawing {
-                    put_pixel(
-                        &mut self.bitmap,
-                        last_point.x.floor() as i32,
-                        last_point.y.floor() as i32,
-                        self.color,
-                        self.size,
-                    );
+                    if was_drawing {
+                        put_pixel(
+                            &mut self.bitmap,
+                            last_point.x.floor() as i32,
+                            last_point.y.floor() as i32,
+                            self.color,
+                            self.size,
+                        );
+                    }
                 }
             }
+            Message::CenterImage => return center_image("canvas"),
+            Message::SetScale(new_scale) => {
+                return scale_image("canvas", new_scale);
+            }
+            Message::Zoomed(scale) => self.scale = scale,
         };
+
+        Task::none()
     }
 
     fn view(&self) -> Element<Message> {
         column![
             container(
                 texture_canvas(&self.bitmap)
+                    .id("canvas")
                     .mouse_interaction(mouse::Interaction::Crosshair)
                     .on_move(Message::Move)
                     .on_press(Message::StartDraw)
                     .on_release(Message::EndDraw)
+                    .on_zoom(Message::Zoomed)
             )
             .style(|_| container::Style {
                 text_color: None,
@@ -113,6 +125,8 @@ impl BasicPaint {
             horizontal_rule(1.0),
             button("Black").on_press(Message::Black),
             button("White").on_press(Message::White),
+            button("Center Image").on_press(Message::CenterImage),
+            slider(1.0..=10.0, self.scale, Message::SetScale)
         ]
         .align_x(Horizontal::Center)
         .into()
@@ -129,14 +143,7 @@ fn load_image() -> Bitmap {
     let image = image::DynamicImage::from_decoder(png_decoder).expect("valid png image");
 
     // create a new bitmap
-    let mut bitmap = bitmap(image.width(), image.height());
-
-    // update bitmap with the image data
-    let rgba = image.to_rgba8().into_raw();
-
-    bitmap.update(&rgba);
-
-    bitmap
+    Bitmap::new_init(image.width(), image.height(), &image.to_rgba8().into_raw())
 }
 
 enum Pending {
