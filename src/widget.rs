@@ -369,7 +369,7 @@ where
         let state = tree.state.downcast_mut::<State>();
 
         let image_width = self.buffer.width() as f32;
-        let image_height = self.buffer.width() as f32;
+        let image_height = self.buffer.height() as f32;
 
         if state.should_center {
             state.should_center = false;
