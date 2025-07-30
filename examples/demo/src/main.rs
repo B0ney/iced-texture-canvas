@@ -2,7 +2,7 @@ use iced::alignment::Horizontal;
 use iced::widget::{button, column, container, horizontal_rule, slider};
 use iced::{Color, Element, Point, Task, mouse};
 
-use iced_texture_canvas::{Bitmap, bitmap, center_image, scale_image, texture_canvas};
+use iced_texture_canvas::{Bitmap, center_image, scale_image, texture_canvas};
 
 fn main() -> iced::Result {
     iced::application(BasicPaint::default, BasicPaint::update, BasicPaint::view)
@@ -63,9 +63,9 @@ impl BasicPaint {
                 }
             }
             Message::Move(point) => {
-                self.pending.update(point);
-
                 if self.drawing {
+                    self.pending.update(point);
+
                     if let Pending::Line(p1, p2) = self.pending {
                         draw_line(
                             &mut self.bitmap,
@@ -110,8 +110,8 @@ impl BasicPaint {
         column![
             container(
                 texture_canvas(&self.bitmap)
-                    .mouse_interaction(mouse::Interaction::Crosshair)
                     .id("canvas")
+                    .mouse_interaction(mouse::Interaction::Crosshair)
                     .on_move(Message::Move)
                     .on_press(Message::StartDraw)
                     .on_release(Message::EndDraw)
@@ -143,14 +143,7 @@ fn load_image() -> Bitmap {
     let image = image::DynamicImage::from_decoder(png_decoder).expect("valid png image");
 
     // create a new bitmap
-    let mut bitmap = bitmap(image.width(), image.height());
-
-    // update bitmap with the image data
-    let rgba = image.to_rgba8().into_raw();
-
-    bitmap.update(&rgba);
-
-    bitmap
+    Bitmap::new_init(image.width(), image.height(), &image.to_rgba8().into_raw())
 }
 
 enum Pending {

@@ -1,4 +1,4 @@
-//! Concrete implementation of the [`SurfaceHandler`] (and [`Surface`](crate::Surface)) in the form of a [`Bitmap`]
+//! A concrete implementation of the [`SurfaceHandler`] (and [`Surface`](crate::Surface)) in the form of a [`Bitmap`] for convenience.
 use crate::widget::surface::SurfaceHandler;
 
 use std::num::NonZeroU32;
@@ -7,13 +7,29 @@ use std::sync::{Arc, Weak};
 
 use iced_core::Size;
 
+/// Create an empty [`Bitmap`] image.
+///
+/// # Panics
+///
+/// Panics if either the width or height is zero.
 pub fn bitmap(width: u32, height: u32) -> Bitmap {
     Bitmap::new(width, height)
 }
 
+/// Image data stored on the CPU that can be displayed by a [`TextureCanvas`](crate::TextureCanvas).
+///
+/// A [`Bitmap`] can be freely edited and resized.
+/// 
+/// **Note**: 
+/// While it contains an [`Arc`], cloning this type will create a new allocation.
 pub struct Bitmap(pub(crate) Arc<SurfaceInner>);
 
 impl Bitmap {
+    /// Create an empty [`Bitmap`] image.
+    ///
+    /// # Panics
+    ///
+    /// Panics if either the width or height is zero.
     pub fn new(width: u32, height: u32) -> Self {
         let buffer = vec![0; width as usize * height as usize];
 
@@ -25,6 +41,28 @@ impl Bitmap {
         }))
     }
 
+    /// Create a [`Bitmap`] image with initialized data.
+    ///
+    /// # Panics
+    ///
+    /// Panics if the `width` * `height` * `4` doesn't match the length of the data.
+    pub fn new_init(width: u32, height: u32, data: &[u8]) -> Self {
+        assert_eq!(
+            width as usize * height as usize * 4,
+            data.len(),
+            "Size mismatch!"
+        );
+
+        let mut this = Self::new(width, height);
+        this.update(data);
+        this
+    }
+
+    /// Resize the [`Bitmap`].
+    ///
+    /// # Panics
+    ///
+    /// Panics if either the width or height is zero.
     pub fn resize(&mut self, width: u32, height: u32) {
         if width == self.width() && height == self.height() {
             return;
@@ -37,36 +75,44 @@ impl Bitmap {
         this.height = NonZeroU32::new(height).expect("height must be greater than 0");
     }
 
-    pub fn raw(&self) -> &[u8] {
-        bytemuck::cast_slice(self.buffer())
-    }
-
-    pub fn buffer(&self) -> &[u32] {
-        &self.0.buffer
-    }
-
+    /// Get the width of the [`Bitmap`]
     pub fn width(&self) -> u32 {
         self.0.width.get()
     }
 
+    /// Get the height of the [`Bitmap`]
     pub fn height(&self) -> u32 {
         self.0.height.get()
     }
 
+    /// Get the [`Size`] of the [`Bitmap`]
+    pub fn size(&self) -> Size {
+        (self.width() as f32, self.height() as f32).into()
+    }
+
+    /// Get an immutable u8 slice of the raw `RGBA` image data.
+    pub fn raw(&self) -> &[u8] {
+        bytemuck::cast_slice(self.buffer())
+    }
+
+    /// Get a mutable u8 slice of the raw `RGBA` image data.
     pub fn raw_mut(&mut self) -> &mut [u8] {
         bytemuck::cast_slice_mut(self.buffer_mut())
     }
 
+    /// Get an immutable u32 slice of the raw `RGBA` image data.
+    pub fn buffer(&self) -> &[u32] {
+        &self.0.buffer
+    }
+
+    /// Get a mutable u32 slice of the raw `RGBA` image data.
     pub fn buffer_mut(&mut self) -> &mut [u32] {
         Arc::make_mut(&mut self.0).buffer_mut()
     }
 
+    /// Update the image buffer with the provided data.
     pub fn update(&mut self, data: &[u8]) {
         self.raw_mut().copy_from_slice(data);
-    }
-
-    pub fn size(&self) -> Size {
-        (self.width() as f32, self.height() as f32).into()
     }
 
     pub(crate) fn create_weak(&self) -> Weak<SurfaceInner> {
