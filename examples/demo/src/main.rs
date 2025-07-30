@@ -39,7 +39,7 @@ impl Default for BasicPaint {
         Self {
             bitmap: load_image(),
             color: WHITE,
-            size: 5,
+            size: 2,
             drawing: false,
             pending: Pending::None,
             scale: 1.0,
