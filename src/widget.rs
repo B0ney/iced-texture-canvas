@@ -500,6 +500,9 @@ where
 
                 Event::Mouse(mouse::Event::WheelScrolled { delta }) => match delta {
                     mouse::ScrollDelta::Lines { y, .. } => {
+                        if state.grabbing {
+                            return;
+                        }
                         // align the canvas to the mouse position when scaling.
                         // first we calculate what % the cursor is from the canvas on both axes.
                         // 0% = far left, or top
