@@ -1,8 +1,8 @@
 use iced::alignment::Horizontal;
-use iced::widget::{button, column, container, horizontal_rule};
-use iced::{Color, Element, Point, mouse};
+use iced::widget::{button, column, container, horizontal_rule, slider};
+use iced::{Color, Element, Point, Task, mouse};
 
-use iced_texture_canvas::{Bitmap, bitmap, texture_canvas};
+use iced_texture_canvas::{Bitmap, bitmap, center_image, scale_image, texture_canvas};
 
 fn main() -> iced::Result {
     iced::application(BasicPaint::default, BasicPaint::update, BasicPaint::view)
@@ -17,6 +17,9 @@ enum Message {
     StartDraw(Point, mouse::Button),
     Move(Point),
     EndDraw(Point, mouse::Button),
+    CenterImage,
+    SetScale(f32),
+    Zoomed(f32),
 }
 
 const WHITE: u32 = 0xffffffff;
@@ -28,6 +31,7 @@ struct BasicPaint {
     size: u8,
     drawing: bool,
     pending: Pending,
+    scale: f32,
 }
 
 impl Default for BasicPaint {
@@ -38,6 +42,7 @@ impl Default for BasicPaint {
             size: 5,
             drawing: false,
             pending: Pending::None,
+            scale: 1.0,
         }
     }
 }
@@ -47,7 +52,7 @@ impl BasicPaint {
         "Basic Paint App".into()
     }
 
-    fn update(&mut self, msg: Message) {
+    fn update(&mut self, msg: Message) -> Task<Message> {
         match msg {
             Message::White => self.color = WHITE,
             Message::Black => self.color = BLACK,
@@ -93,7 +98,14 @@ impl BasicPaint {
                     );
                 }
             }
+            Message::CenterImage => return center_image("canvas"),
+            Message::SetScale(new_scale) => {
+                return scale_image("canvas", new_scale);
+            }
+            Message::Zoomed(scale) => self.scale = scale,
         };
+
+        Task::none()
     }
 
     fn view(&self) -> Element<Message> {
@@ -101,9 +113,11 @@ impl BasicPaint {
             container(
                 texture_canvas(&self.bitmap)
                     .mouse_interaction(mouse::Interaction::Crosshair)
+                    .id("canvas")
                     .on_move(Message::Move)
                     .on_press(Message::StartDraw)
                     .on_release(Message::EndDraw)
+                    .on_zoom(Message::Zoomed)
             )
             .style(|_| container::Style {
                 text_color: None,
@@ -113,6 +127,8 @@ impl BasicPaint {
             horizontal_rule(1.0),
             button("Black").on_press(Message::Black),
             button("White").on_press(Message::White),
+            button("Center Image").on_press(Message::CenterImage),
+            slider(1.0..=10.0, self.scale, Message::SetScale)
         ]
         .align_x(Horizontal::Center)
         .into()

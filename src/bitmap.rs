@@ -1,4 +1,4 @@
-//! Concrete implementation of the [`SurfaceHandler`] (and Surface) in the form of a [`Bitmap`]
+//! Concrete implementation of the [`SurfaceHandler`] (and [`Surface`](crate::Surface)) in the form of a [`Bitmap`]
 use crate::widget::surface::SurfaceHandler;
 
 use std::num::NonZeroU32;
