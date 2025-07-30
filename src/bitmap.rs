@@ -19,8 +19,8 @@ pub fn bitmap(width: u32, height: u32) -> Bitmap {
 /// Image data stored on the CPU that can be displayed by a [`TextureCanvas`](crate::TextureCanvas).
 ///
 /// A [`Bitmap`] can be freely edited and resized.
-/// 
-/// **Note**: 
+///
+/// **Note**:
 /// While it contains an [`Arc`], cloning this type will create a new allocation.
 pub struct Bitmap(pub(crate) Arc<SurfaceInner>);
 
@@ -29,7 +29,7 @@ impl Bitmap {
     ///
     /// # Panics
     ///
-    /// Panics if either the width or height is zero.
+    /// Panics if either the `width` or `height` is zero.
     pub fn new(width: u32, height: u32) -> Self {
         let buffer = vec![0; width as usize * height as usize];
 
@@ -45,7 +45,9 @@ impl Bitmap {
     ///
     /// # Panics
     ///
-    /// Panics if the `width` * `height` * `4` doesn't match the length of the data.
+    /// Panics if the `width * height * 4` doesn't match the length of the data.
+    ///
+    /// panics if either the `width` or `height` is zero.
     pub fn new_init(width: u32, height: u32, data: &[u8]) -> Self {
         assert_eq!(
             width as usize * height as usize * 4,
@@ -62,7 +64,7 @@ impl Bitmap {
     ///
     /// # Panics
     ///
-    /// Panics if either the width or height is zero.
+    /// Panics if either the `width` or `height` is zero.
     pub fn resize(&mut self, width: u32, height: u32) {
         if width == self.width() && height == self.height() {
             return;
@@ -111,6 +113,10 @@ impl Bitmap {
     }
 
     /// Update the image buffer with the provided data.
+    /// 
+    /// # Panics
+    /// 
+    /// Panics if the length of the data doesn't match the length of the contained `RGBA` bytes.
     pub fn update(&mut self, data: &[u8]) {
         self.raw_mut().copy_from_slice(data);
     }
