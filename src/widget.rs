@@ -18,8 +18,8 @@ use iced_widget::runtime::{
     task::{self, Task},
 };
 
-const MIN_SCALE: f32 = 1.0; //0.05;
-const MAX_SCALE: f32 = 1600.0;
+const MIN_SCALE: f32 = 1.0; //0.05; // TODO
+const MAX_SCALE: f32 = 64.0; // 6,400%
 
 /// Create a new [`TextureCanvas`] with the given [`SurfaceHandler`].
 ///
