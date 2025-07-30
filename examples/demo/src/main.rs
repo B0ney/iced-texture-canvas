@@ -57,9 +57,8 @@ impl BasicPaint {
             Message::White => self.color = WHITE,
             Message::Black => self.color = BLACK,
             Message::StartDraw(point, button) => {
-                self.pending.update(point);
-
                 if button == mouse::Button::Left {
+                    self.pending.update(point);
                     self.drawing = true
                 }
             }
@@ -82,20 +81,19 @@ impl BasicPaint {
                 }
             }
             Message::EndDraw(last_point, button) => {
-                let was_drawing = self.drawing;
-
                 if button == mouse::Button::Left {
-                    self.drawing = false
-                }
+                    let was_drawing = self.drawing;
+                    self.drawing = false;
 
-                if was_drawing {
-                    put_pixel(
-                        &mut self.bitmap,
-                        last_point.x.floor() as i32,
-                        last_point.y.floor() as i32,
-                        self.color,
-                        self.size,
-                    );
+                    if was_drawing {
+                        put_pixel(
+                            &mut self.bitmap,
+                            last_point.x.floor() as i32,
+                            last_point.y.floor() as i32,
+                            self.color,
+                            self.size,
+                        );
+                    }
                 }
             }
             Message::CenterImage => return center_image("canvas"),
