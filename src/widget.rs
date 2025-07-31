@@ -59,6 +59,7 @@ where
 
     class: Theme::Class<'a>,
     id: Option<Id>,
+    default_zoom: f32,
 
     on_grab: Option<Box<dyn Fn() -> Message + 'a>>,
     on_zoom: Option<Box<dyn Fn(f32) -> Message + 'a>>,
@@ -94,6 +95,7 @@ where
             interaction: None,
             class: Theme::default(),
             id: None,
+            default_zoom: 1.0,
         }
     }
 
@@ -229,6 +231,12 @@ where
         self.id = Some(id.into());
         self
     }
+
+    /// Set the default scale of the image displayed in the [`TextureCanvas`]
+    pub fn default_zoom(mut self, default_zoom: f32) -> Self {
+        self.default_zoom = default_zoom;
+        self
+    }
 }
 
 impl<'a, Message, Theme, Renderer, Handler> Widget<Message, Theme, Renderer>
@@ -244,7 +252,8 @@ where
     }
 
     fn state(&self) -> widget::tree::State {
-        widget::tree::State::new(State::default())
+        let default_zoom = self.default_zoom.clamp(MIN_SCALE, MAX_SCALE);
+        widget::tree::State::new(State::new(default_zoom))
     }
 
     fn size(&self) -> Size<Length> {
@@ -603,13 +612,13 @@ pub(crate) struct State {
     pub suggested_scale: Option<f32>,
 }
 
-impl Default for State {
-    fn default() -> Self {
+impl State {
+    fn new(default_scale: f32) -> Self {
         Self {
             canvas_grab: Default::default(),
             grabbing: Default::default(),
             canvas_offset: Default::default(),
-            scale: 1.0,
+            scale: default_scale,
             is_hovered: Default::default(),
             generation: new_generation(),
             should_center: true,
