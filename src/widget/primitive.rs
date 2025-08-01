@@ -32,12 +32,6 @@ impl<Buffer: Surface> Primitive<Buffer> {
     }
 }
 
-struct Storage {
-    pipeline: Pipeline,
-    generation: u64,
-    surface_ptr: usize,
-}
-
 impl<Buffer: Surface> shader::Primitive for Primitive<Buffer> {
     fn prepare(
         &self,
@@ -52,41 +46,49 @@ impl<Buffer: Surface> shader::Primitive for Primitive<Buffer> {
             return;
         };
 
-        let mut force_redraw = false;
+        let mut force_update = false;
 
-        if !storage.has::<Storage>() {
-            force_redraw = true;
+        if !storage.has::<Pipeline>() {
+            force_update = true;
 
-            storage.store(Storage {
-                pipeline: Pipeline::new(device, format, &surface),
-                generation: self.generation,
-                surface_ptr: get_surface_ptr(&surface),
-            });
+            storage.store(Pipeline::new(
+                device,
+                format,
+                &surface,
+                self.generation,
+                get_surface_ptr(&surface),
+            ));
         }
 
-        let Storage {
-            pipeline,
-            generation,
-            surface_ptr,
-        } = storage.get_mut::<Storage>().unwrap();
+        let pipeline = storage.get_mut::<Pipeline>().unwrap();
 
         let texture_size = pipeline.texture.size;
 
         // TODO: Optimise this.
         if surface.width() != texture_size.width || surface.height() != texture_size.height {
-            force_redraw = true;
-            *pipeline = Pipeline::new(device, format, &surface);
+            force_update = true;
+            *pipeline = Pipeline::new(
+                device,
+                format,
+                &surface,
+                self.generation,
+                get_surface_ptr(&surface),
+            );
         }
 
-        if *generation != self.generation {
-            force_redraw = true;
-            *generation = self.generation;
+        // Update the texture when the widget tree changes
+        if pipeline.generation != self.generation {
+            force_update = true;
+            pipeline.generation = self.generation;
         }
 
+        // Update the texture if the pointer to the surface changes.
+        //
+        // This lets you can swap multiple images.
         let new_surface_ptr = get_surface_ptr(&surface);
-        if *surface_ptr != new_surface_ptr {
-            force_redraw = true;
-            *surface_ptr = new_surface_ptr
+        if pipeline.surface_ptr != new_surface_ptr {
+            force_update = true;
+            pipeline.surface_ptr = new_surface_ptr
         }
 
         pipeline.uniform.upload(
@@ -94,7 +96,7 @@ impl<Buffer: Surface> shader::Primitive for Primitive<Buffer> {
             UniformsRaw::new(self.offset, self.scale, bounds.size(), surface.size()),
         );
 
-        if force_redraw {
+        if force_update {
             pipeline
                 .texture
                 .upload(queue, surface.width(), surface.height(), surface.data());
