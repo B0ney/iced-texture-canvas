@@ -128,7 +128,7 @@ where
         self
     }
 
-    /// Set the message that will be produced when the image is panned.
+    /// Set the message to emit when the image is panned.
     pub fn on_drag(mut self, on_drag: impl Fn() -> Message + 'a) -> Self {
         self.on_grab = Some(Box::new(on_drag));
         self
@@ -148,7 +148,7 @@ where
         self
     }
 
-    /// Set the message to emit the mouse moves over the [`TextureCanvas`].
+    /// Set the message to emit when the mouse moves over the [`TextureCanvas`].
     ///
     /// The [`Point`] it produces is relative to the position of the displayed image.
     pub fn on_move(mut self, on_move: impl Fn(Point) -> Message + 'a) -> Self {

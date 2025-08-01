@@ -84,7 +84,7 @@ impl<Buffer: Surface> shader::Primitive for Primitive<Buffer> {
 
         // Update the texture if the pointer to the surface changes.
         //
-        // This lets you can swap multiple images.
+        // This lets you swap multiple images.
         let new_surface_ptr = get_surface_ptr(&surface);
         if pipeline.surface_ptr != new_surface_ptr {
             force_update = true;
