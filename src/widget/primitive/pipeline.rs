@@ -10,6 +10,7 @@ pub(crate) struct Pipeline {
     pub uniform: uniforms::Uniform,
     pub texture: texture::Texture,
     pub generation: u64,
+    pub surface_ptr: usize,
 }
 
 impl Pipeline {
@@ -18,6 +19,7 @@ impl Pipeline {
         format: wgpu::TextureFormat,
         pixmap: &Buffer,
         generation: u64,
+        surface_ptr: usize,
     ) -> Self {
         let shader = device.create_shader_module(wgpu::ShaderModuleDescriptor {
             label: Some("Pipeline shader"),
@@ -64,6 +66,7 @@ impl Pipeline {
             uniform,
             texture,
             generation,
+            surface_ptr,
         }
     }
 

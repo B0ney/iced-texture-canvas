@@ -11,7 +11,7 @@ use iced_core::Rectangle;
 use iced_wgpu::wgpu;
 use iced_widget::shader;
 
-use std::sync::Weak;
+use std::sync::{Arc, Weak};
 
 #[derive(Debug)]
 pub struct Primitive<Buffer: Surface> {
@@ -46,11 +46,18 @@ impl<Buffer: Surface> shader::Primitive for Primitive<Buffer> {
             return;
         };
 
-        let mut force_redraw = false;
+        let mut force_update = false;
 
         if !storage.has::<Pipeline>() {
-            force_redraw = true;
-            storage.store(Pipeline::new(device, format, &surface, self.generation));
+            force_update = true;
+
+            storage.store(Pipeline::new(
+                device,
+                format,
+                &surface,
+                self.generation,
+                get_surface_ptr(&surface),
+            ));
         }
 
         let pipeline = storage.get_mut::<Pipeline>().unwrap();
@@ -59,13 +66,29 @@ impl<Buffer: Surface> shader::Primitive for Primitive<Buffer> {
 
         // TODO: Optimise this.
         if surface.width() != texture_size.width || surface.height() != texture_size.height {
-            force_redraw = true;
-            *pipeline = Pipeline::new(device, format, &surface, self.generation);
+            force_update = true;
+            *pipeline = Pipeline::new(
+                device,
+                format,
+                &surface,
+                self.generation,
+                get_surface_ptr(&surface),
+            );
         }
 
+        // Update the texture when the widget tree changes
         if pipeline.generation != self.generation {
+            force_update = true;
             pipeline.generation = self.generation;
-            force_redraw = true;
+        }
+
+        // Update the texture if the pointer to the surface changes.
+        //
+        // This lets you swap multiple images.
+        let new_surface_ptr = get_surface_ptr(&surface);
+        if pipeline.surface_ptr != new_surface_ptr {
+            force_update = true;
+            pipeline.surface_ptr = new_surface_ptr
         }
 
         pipeline.uniform.upload(
@@ -73,7 +96,7 @@ impl<Buffer: Surface> shader::Primitive for Primitive<Buffer> {
             UniformsRaw::new(self.offset, self.scale, bounds.size(), surface.size()),
         );
 
-        if force_redraw {
+        if force_update {
             pipeline
                 .texture
                 .upload(queue, surface.width(), surface.height(), surface.data());
@@ -95,4 +118,8 @@ impl<Buffer: Surface> shader::Primitive for Primitive<Buffer> {
             pipeline.render(target, clip_bounds, encoder);
         }
     }
+}
+
+fn get_surface_ptr<S: Surface>(surface: &Arc<S>) -> usize {
+    Arc::as_ptr(surface) as *const u8 as usize
 }
