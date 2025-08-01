@@ -11,7 +11,7 @@ use iced_core::Rectangle;
 use iced_wgpu::wgpu;
 use iced_widget::shader;
 
-use std::sync::Weak;
+use std::sync::{Arc, Weak};
 
 #[derive(Debug)]
 pub struct Primitive<Buffer: Surface> {
@@ -32,6 +32,12 @@ impl<Buffer: Surface> Primitive<Buffer> {
     }
 }
 
+struct Storage {
+    pipeline: Pipeline,
+    generation: u64,
+    surface_ptr: usize,
+}
+
 impl<Buffer: Surface> shader::Primitive for Primitive<Buffer> {
     fn prepare(
         &self,
@@ -48,24 +54,39 @@ impl<Buffer: Surface> shader::Primitive for Primitive<Buffer> {
 
         let mut force_redraw = false;
 
-        if !storage.has::<Pipeline>() {
+        if !storage.has::<Storage>() {
             force_redraw = true;
-            storage.store(Pipeline::new(device, format, &surface, self.generation));
+
+            storage.store(Storage {
+                pipeline: Pipeline::new(device, format, &surface),
+                generation: self.generation,
+                surface_ptr: get_surface_ptr(&surface),
+            });
         }
 
-        let pipeline = storage.get_mut::<Pipeline>().unwrap();
+        let Storage {
+            pipeline,
+            generation,
+            surface_ptr,
+        } = storage.get_mut::<Storage>().unwrap();
 
         let texture_size = pipeline.texture.size;
 
         // TODO: Optimise this.
         if surface.width() != texture_size.width || surface.height() != texture_size.height {
             force_redraw = true;
-            *pipeline = Pipeline::new(device, format, &surface, self.generation);
+            *pipeline = Pipeline::new(device, format, &surface);
         }
 
-        if pipeline.generation != self.generation {
-            pipeline.generation = self.generation;
+        if *generation != self.generation {
             force_redraw = true;
+            *generation = self.generation;
+        }
+
+        let new_surface_ptr = get_surface_ptr(&surface);
+        if *surface_ptr != new_surface_ptr {
+            force_redraw = true;
+            *surface_ptr = new_surface_ptr
         }
 
         pipeline.uniform.upload(
@@ -95,4 +116,8 @@ impl<Buffer: Surface> shader::Primitive for Primitive<Buffer> {
             pipeline.render(target, clip_bounds, encoder);
         }
     }
+}
+
+fn get_surface_ptr<S: Surface>(surface: &Arc<S>) -> usize {
+    Arc::as_ptr(surface) as *const u8 as usize
 }
