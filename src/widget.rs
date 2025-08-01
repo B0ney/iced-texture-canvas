@@ -253,7 +253,21 @@ where
 
     fn state(&self) -> widget::tree::State {
         let default_zoom = self.default_zoom.clamp(MIN_SCALE, MAX_SCALE);
-        widget::tree::State::new(State::new(default_zoom))
+        widget::tree::State::new(State::new(
+            default_zoom,
+            (self.buffer.width(), self.buffer.height()),
+        ))
+    }
+
+    fn diff(&self, tree: &mut widget::Tree) {
+        let state: &mut State = tree.state.downcast_mut();
+        let new_size = (self.buffer.width(), self.buffer.height());
+
+        // Center the image if its size has changed.
+        if state.image_size != new_size {
+            state.image_size = new_size;
+            state.should_center = true;
+        }
     }
 
     fn size(&self) -> Size<Length> {
@@ -610,10 +624,11 @@ pub(crate) struct State {
     generation: u64,
     pub should_center: bool,
     pub suggested_scale: Option<f32>,
+    image_size: (u32, u32),
 }
 
 impl State {
-    fn new(default_scale: f32) -> Self {
+    fn new(default_scale: f32, image_size: (u32, u32)) -> Self {
         Self {
             canvas_grab: Default::default(),
             grabbing: Default::default(),
@@ -623,6 +638,7 @@ impl State {
             generation: new_generation(),
             should_center: true,
             suggested_scale: None,
+            image_size,
         }
     }
 }
