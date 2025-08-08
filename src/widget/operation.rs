@@ -27,8 +27,9 @@ impl<T> Operation<T> for CenterImage {
         _bounds: iced_core::Rectangle,
         state: &mut dyn std::any::Any,
     ) {
-        if id == Some(&self.id) {
-            let state: &mut State = state.downcast_mut().unwrap();
+        if id == Some(&self.id)
+            && let Some(state) = state.downcast_mut::<State>()
+        {
             state.should_center = true;
         }
     }
@@ -63,8 +64,9 @@ impl<T> Operation<T> for ScaleImage {
         _bounds: iced_core::Rectangle,
         state: &mut dyn std::any::Any,
     ) {
-        if id == Some(&self.id) {
-            let state: &mut State = state.downcast_mut().unwrap();
+        if id == Some(&self.id)
+            && let Some(state) = state.downcast_mut::<State>()
+        {
             state.suggested_scale = Some(self.scale);
         }
     }
