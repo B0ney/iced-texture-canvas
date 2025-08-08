@@ -106,7 +106,7 @@ impl BasicPaint {
         Task::none()
     }
 
-    fn view(&self) -> Element<Message> {
+    fn view(&self) -> Element<'_, Message> {
         column![
             container(
                 texture_canvas(&self.bitmap)

@@ -113,9 +113,9 @@ impl Bitmap {
     }
 
     /// Update the image buffer with the provided data.
-    /// 
+    ///
     /// # Panics
-    /// 
+    ///
     /// Panics if the length of the data doesn't match the length of the contained `RGBA` bytes.
     pub fn update(&mut self, data: &[u8]) {
         self.raw_mut().copy_from_slice(data);
