@@ -5,7 +5,7 @@ use crate::widget::Surface;
 use iced_core::Rectangle;
 use iced_wgpu::wgpu;
 
-pub(crate) struct Pipeline {
+pub struct Pipeline {
     pipeline: wgpu::RenderPipeline,
     pub uniform: uniforms::Uniform,
     pub texture: texture::Texture,

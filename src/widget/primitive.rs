@@ -32,13 +32,43 @@ impl<Buffer: Surface> Primitive<Buffer> {
     }
 }
 
+pub struct Renderer {
+    pipeline: Option<Pipeline>,
+    format: wgpu::TextureFormat,
+}
+
 impl<Buffer: Surface> shader::Primitive for Primitive<Buffer> {
-    fn prepare(
+    type Renderer = Renderer;
+
+    fn initialize(
         &self,
         device: &wgpu::Device,
-        queue: &wgpu::Queue,
+        _queue: &wgpu::Queue,
         format: wgpu::TextureFormat,
-        storage: &mut shader::Storage,
+    ) -> Self::Renderer {
+        match self.surface.upgrade() {
+            Some(surface) => Renderer {
+                pipeline: Some(Pipeline::new(
+                    device,
+                    format,
+                    &surface,
+                    self.generation,
+                    get_surface_ptr(&surface),
+                )),
+                format,
+            },
+            None => Renderer {
+                pipeline: None,
+                format,
+            },
+        }
+    }
+
+    fn prepare(
+        &self,
+        Renderer { pipeline, format }: &mut Self::Renderer,
+        device: &wgpu::Device,
+        queue: &wgpu::Queue,
         bounds: &Rectangle,
         _viewport: &shader::Viewport,
     ) {
@@ -46,23 +76,21 @@ impl<Buffer: Surface> shader::Primitive for Primitive<Buffer> {
             return;
         };
 
-        let mut force_update = false;
+        let format = *format;
 
-        if !storage.has::<Pipeline>() {
-            force_update = true;
-
-            storage.store(Pipeline::new(
+        let pipeline = pipeline.get_or_insert_with(|| {
+            Pipeline::new(
                 device,
                 format,
                 &surface,
                 self.generation,
                 get_surface_ptr(&surface),
-            ));
-        }
-
-        let pipeline = storage.get_mut::<Pipeline>().unwrap();
+            )
+        });
 
         let texture_size = pipeline.texture.size;
+
+        let mut force_update = false;
 
         // TODO: Optimise this.
         if surface.width() != texture_size.width || surface.height() != texture_size.height {
@@ -109,17 +137,17 @@ impl<Buffer: Surface> shader::Primitive for Primitive<Buffer> {
 
     fn render(
         &self,
+        renderer: &Self::Renderer,
         encoder: &mut wgpu::CommandEncoder,
-        storage: &shader::Storage,
         target: &wgpu::TextureView,
         clip_bounds: &Rectangle<u32>,
     ) {
-        if let Some(pipeline) = storage.get::<Pipeline>() {
+        if let Some(pipeline) = &renderer.pipeline {
             pipeline.render(target, clip_bounds, encoder);
         }
     }
 }
 
 fn get_surface_ptr<S: Surface>(surface: &Arc<S>) -> usize {
-    Arc::as_ptr(surface) as *const u8 as usize
+    Arc::as_ptr(surface) as *const () as usize
 }
