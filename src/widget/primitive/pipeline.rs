@@ -70,28 +70,7 @@ impl Pipeline {
         }
     }
 
-    pub fn render(
-        &self,
-        target: &wgpu::TextureView,
-        viewport: &Rectangle<u32>,
-        encoder: &mut wgpu::CommandEncoder,
-    ) {
-        let mut pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
-            label: Some("Color"),
-            color_attachments: &[Some(wgpu::RenderPassColorAttachment {
-                view: target,
-                resolve_target: None,
-                ops: wgpu::Operations {
-                    load: wgpu::LoadOp::Load,
-                    store: wgpu::StoreOp::Store,
-                },
-                depth_slice: None,
-            })],
-            depth_stencil_attachment: None,
-            timestamp_writes: None,
-            occlusion_query_set: None,
-        });
-
+    pub fn draw(&self, pass: &mut wgpu::RenderPass, viewport: &Rectangle<u32>) {
         pass.set_pipeline(&self.pipeline);
         pass.set_viewport(
             viewport.x as f32,

@@ -135,16 +135,17 @@ impl<Buffer: Surface> shader::Primitive for Primitive<Buffer> {
         }
     }
 
-    fn render(
+    fn draw(
         &self,
         renderer: &Self::Renderer,
-        encoder: &mut wgpu::CommandEncoder,
-        target: &wgpu::TextureView,
+        pass: &mut wgpu::RenderPass,
         clip_bounds: &Rectangle<u32>,
-    ) {
+    ) -> bool {
         if let Some(pipeline) = &renderer.pipeline {
-            pipeline.render(target, clip_bounds, encoder);
+            pipeline.draw(pass, clip_bounds);
         }
+
+        true
     }
 }
 
