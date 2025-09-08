@@ -70,16 +70,8 @@ impl Pipeline {
         }
     }
 
-    pub fn draw(&self, pass: &mut wgpu::RenderPass, viewport: &Rectangle<u32>) {
+    pub fn draw(&self, pass: &mut wgpu::RenderPass) {
         pass.set_pipeline(&self.pipeline);
-        pass.set_viewport(
-            viewport.x as f32,
-            viewport.y as f32,
-            viewport.width as f32,
-            viewport.height as f32,
-            0.0,
-            1.0,
-        );
 
         pass.set_bind_group(0, &self.texture.bind_group, &[]);
         pass.set_bind_group(1, &self.uniform.bind_group, &[]);
