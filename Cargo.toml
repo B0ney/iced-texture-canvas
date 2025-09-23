@@ -17,6 +17,8 @@ iced_core = { version = "0.14.0-dev" }
 iced_wgpu = { version = "0.14.0-dev" }
 iced_renderer = { version = "0.14.0-dev", features = ["wgpu"] }
 iced_widget = { version = "0.14.0-dev", features = ["wgpu"] }
+iced_runtime = { version = "0.14.0-dev" }
+
 
 [profile.dev]
 split-debuginfo = "packed"
@@ -28,3 +30,4 @@ iced_core.git = "https://github.com/iced-rs/iced.git"
 iced_wgpu.git = "https://github.com/iced-rs/iced.git"
 iced_renderer.git = "https://github.com/iced-rs/iced.git"
 iced_widget.git = "https://github.com/iced-rs/iced.git"
+iced_runtime.git = "https://github.com/iced-rs/iced.git"

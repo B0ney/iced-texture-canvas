@@ -13,7 +13,7 @@ use iced_core::{
     widget::{self, Id},
     window,
 };
-use iced_widget::runtime::{
+use iced_runtime::{
     Action,
     task::{self, Task},
 };

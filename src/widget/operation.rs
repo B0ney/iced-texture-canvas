@@ -12,13 +12,8 @@ struct CenterImage {
 }
 
 impl<T> Operation<T> for CenterImage {
-    fn container(
-        &mut self,
-        _id: Option<&Id>,
-        _bounds: iced_core::Rectangle,
-        operate_on_children: &mut dyn FnMut(&mut dyn Operation<T>),
-    ) {
-        operate_on_children(self);
+    fn traverse(&mut self, operate: &mut dyn FnMut(&mut dyn Operation<T>)) {
+        operate(self)
     }
 
     fn custom(
@@ -49,13 +44,8 @@ struct ScaleImage {
 }
 
 impl<T> Operation<T> for ScaleImage {
-    fn container(
-        &mut self,
-        _id: Option<&widget::Id>,
-        _bounds: iced_core::Rectangle,
-        operate_on_children: &mut dyn FnMut(&mut dyn Operation<T>),
-    ) {
-        operate_on_children(self);
+    fn traverse(&mut self, operate: &mut dyn FnMut(&mut dyn Operation<T>)) {
+        operate(self)
     }
 
     fn custom(

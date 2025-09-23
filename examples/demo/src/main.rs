@@ -1,5 +1,5 @@
 use iced::alignment::Horizontal;
-use iced::widget::{button, column, container, horizontal_rule, slider};
+use iced::widget::{button, column, container, rule, slider};
 use iced::{Color, Element, Point, Task, mouse};
 
 use iced_texture_canvas::{Bitmap, center_image, scale_image, texture_canvas};
@@ -122,7 +122,7 @@ impl BasicPaint {
                 background: Some(Color::from_rgba8(127, 127, 127, 1.).into()),
                 ..Default::default()
             }),
-            horizontal_rule(1.0),
+            rule::horizontal(1.0),
             button("Black").on_press(Message::Black),
             button("White").on_press(Message::White),
             button("Center Image").on_press(Message::CenterImage),
