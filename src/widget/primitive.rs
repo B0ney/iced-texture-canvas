@@ -4,7 +4,7 @@ pub mod uniforms;
 
 use crate::widget::surface::Surface;
 
-use pipeline::Pipeline;
+use pipeline::Pipeline as PipelineInner;
 use uniforms::UniformsRaw;
 
 use iced_core::Rectangle;
@@ -32,41 +32,29 @@ impl<Buffer: Surface> Primitive<Buffer> {
     }
 }
 
-pub struct Renderer {
-    pipeline: Option<Pipeline>,
+impl iced_wgpu::primitive::Pipeline for Pipeline {
+    fn new(_device: &wgpu::Device, _queue: &wgpu::Queue, format: wgpu::TextureFormat) -> Self
+    where
+        Self: Sized,
+    {
+        Pipeline {
+            pipeline: None,
+            format,
+        }
+    }
+}
+
+pub struct Pipeline {
+    pipeline: Option<PipelineInner>,
     format: wgpu::TextureFormat,
 }
 
 impl<Buffer: Surface> shader::Primitive for Primitive<Buffer> {
-    type Renderer = Renderer;
-
-    fn initialize(
-        &self,
-        device: &wgpu::Device,
-        _queue: &wgpu::Queue,
-        format: wgpu::TextureFormat,
-    ) -> Self::Renderer {
-        match self.surface.upgrade() {
-            Some(surface) => Renderer {
-                pipeline: Some(Pipeline::new(
-                    device,
-                    format,
-                    &surface,
-                    self.generation,
-                    get_surface_ptr(&surface),
-                )),
-                format,
-            },
-            None => Renderer {
-                pipeline: None,
-                format,
-            },
-        }
-    }
+    type Pipeline = Pipeline;
 
     fn prepare(
         &self,
-        Renderer { pipeline, format }: &mut Self::Renderer,
+        Pipeline { pipeline, format }: &mut Self::Pipeline,
         device: &wgpu::Device,
         queue: &wgpu::Queue,
         bounds: &Rectangle,
@@ -79,7 +67,7 @@ impl<Buffer: Surface> shader::Primitive for Primitive<Buffer> {
         let format = *format;
 
         let pipeline = pipeline.get_or_insert_with(|| {
-            Pipeline::new(
+            PipelineInner::new(
                 device,
                 format,
                 &surface,
@@ -95,7 +83,7 @@ impl<Buffer: Surface> shader::Primitive for Primitive<Buffer> {
         // TODO: Optimise this.
         if surface.width() != texture_size.width || surface.height() != texture_size.height {
             force_update = true;
-            *pipeline = Pipeline::new(
+            *pipeline = PipelineInner::new(
                 device,
                 format,
                 &surface,
@@ -135,7 +123,7 @@ impl<Buffer: Surface> shader::Primitive for Primitive<Buffer> {
         }
     }
 
-    fn draw(&self, renderer: &Self::Renderer, pass: &mut wgpu::RenderPass) -> bool {
+    fn draw(&self, renderer: &Self::Pipeline, pass: &mut wgpu::RenderPass) -> bool {
         if let Some(pipeline) = &renderer.pipeline {
             pipeline.draw(pass);
         }

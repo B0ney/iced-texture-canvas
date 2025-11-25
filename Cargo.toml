@@ -8,6 +8,7 @@ members = ["examples/*"]
 
 [workspace.dependencies]
 iced_texture_canvas = { path = "." }
+iced = { version = "0.14.0-dev", default-features=false }
 
 [dependencies]
 bytemuck = { version = "1.16.0" }

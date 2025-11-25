@@ -5,9 +5,14 @@ edition = "2024"
 
 [dependencies]
 image = { version = "0.25", default-features = false, features = ["png"] }
-
 iced_texture_canvas.workspace = true
-iced = { version = "0.14.0-dev", default-features = false, features = [
+
+[dependencies.iced]
+workspace = true
+default-features = false
+features = [
     "wgpu",
     "thread-pool",
-] }
+    "x11",
+    "wayland"
+] 
